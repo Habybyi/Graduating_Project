@@ -1,28 +1,44 @@
-# Faster Packing Lists
+# 🚚 Faster Packing Lists
 
-AI-powered packing list generation for bakery and dessert deliveries.
+AI-powered 📸 packing list generation for bakery and dessert deliveries.
 
+---
 
-
-## Project idea
+## 💡 Project idea
 
 This project helps drivers create accurate packing lists faster and with less effort. Instead of manually writing down each item, the system uses a camera and AI image recognition to detect products in the crates and automatically add them to the order.
 
+---
 
-
-## Problem
+## ⚠️ Problem
 
 Many drivers do not know how to create a correct packing list for every customer. This can lead to mistakes, missing items, delays, and poor communication between the kitchen and delivery staff.
 
+---
 
-
-## Solution
+## ✅ Solution
 
 The goal is to make the process simple, fast, and automatic. Drivers can open the application, scan a QR code, take photos of the prepared crates, and let AI identify the cakes and desserts. The system then creates the packing list and counts the items automatically.
 
+---
+
+## 📚 Other documentation
+
+### 🧭 Tutorials
+
+- [📸 How to create photos](Documentation/Tutorials/How_to_create_photos.md)
 
 
-## How it works
+### 🗺️ Navigation
+
+- [🌐 Website](./Documentation/Navigation/Website.md)
+    - 🔐 Login
+    - 📷 How and where to add reference photos
+    - 🧾 How to create a packing list
+
+---
+
+## 🛠️ How it works
 
 ### 1. Preparation
 
@@ -42,9 +58,9 @@ The goal is to make the process simple, fast, and automatic. Drivers can open th
 - After the items are confirmed, the driver clicks the `PDF` button.
 - The system generates a final PDF packing list for the customer.
 
+---
 
-
-## Why this is useful
+## 🌟 Why this is useful
 
 - Saves time for drivers
 - Reduces human mistakes
@@ -52,8 +68,8 @@ The goal is to make the process simple, fast, and automatic. Drivers can open th
 - Speeds up delivery preparation
 - Creates a cleaner and more professional process
 
+---
 
-
-## Expected outcome
+## 🎯 Expected outcome
 
 The final result is a fast and practical system that helps drivers prepare customer orders more efficiently while reducing mistakes and improving the quality of the delivery process.
