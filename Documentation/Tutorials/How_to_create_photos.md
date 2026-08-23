@@ -26,4 +26,10 @@
 5. Upload the package to the dashboard.
    - More instructions will be added when the dashboard is ready.
 
+---
+
+## 🗑️ What happens to your photos after upload
+
+- Every uploaded photo is processed by the AI (its "fingerprint" is extracted) and then **deleted** — it is not kept in storage.
+- This does **not** apply to the small, separately marked test set used for accuracy testing (see [Test_Plan.md](../Testing/Test_Plan.md)) — those photos are explicitly flagged at upload time and kept on purpose. Everything else follows the process-then-delete rule.
 

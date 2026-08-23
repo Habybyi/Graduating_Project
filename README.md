@@ -36,6 +36,19 @@ The goal is to make the process simple, fast, and automatic. Drivers can open th
     - 📷 How and where to add reference photos
     - 🧾 How to create a packing list
 
+### 🏗️ Architecture
+
+- [System Overview](./Documentation/Architecture/System_Overview.md)
+- [Data Flow](./Documentation/Architecture/Data_Flow.md)
+- [Data Model](./Documentation/Architecture/Data_Model.md)
+- [AI Recognition](./Documentation/Architecture/AI_Recognition.md)
+- [SuperFaktúra Integration](./Documentation/Architecture/SuperFaktura_Integration.md)
+- [Network & QR Session](./Documentation/Architecture/Network_Session.md)
+
+### 🧪 Testing
+
+- [AI Recognition Test Plan](./Documentation/Testing/Test_Plan.md)
+
 ---
 
 ## 🛠️ How it works
