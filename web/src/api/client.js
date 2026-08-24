@@ -30,4 +30,21 @@ export const api = {
   listCustomers: (token) => request("/customers", { token }),
   createCustomer: (token, name, address) =>
     request("/customers", { method: "POST", token, body: { name, address } }),
+  listProducts: (token) => request("/products", { token }),
+  createProduct: (token, name, unitType) =>
+    request("/products", { method: "POST", token, body: { name, unitType } }),
+  listDeliveryNotes: (token) => request("/delivery-notes", { token }),
+  getDeliveryNote: (token, id) => request(`/delivery-notes/${id}`, { token }),
+  createDeliveryNote: (token, customerId) =>
+    request("/delivery-notes", { method: "POST", token, body: { customerId } }),
+  addDeliveryNoteItem: (token, noteId, productId, quantity) =>
+    request(`/delivery-notes/${noteId}/items`, { method: "POST", token, body: { productId, quantity } }),
+  removeDeliveryNoteItem: (token, noteId, itemId) =>
+    request(`/delivery-notes/${noteId}/items/${itemId}`, { method: "DELETE", token }),
+  setDeliveryNoteStatus: (token, noteId, status) =>
+    request(`/delivery-notes/${noteId}/status`, { method: "PATCH", token, body: { status } }),
+  createSession: (token, noteId) => request(`/sessions/for-note/${noteId}`, { method: "POST", token }),
+  getScanSession: (sessionToken) => request(`/sessions/${sessionToken}`),
+  addScanItem: (sessionToken, productId, quantity) =>
+    request(`/sessions/${sessionToken}/items`, { method: "POST", body: { productId, quantity } }),
 };

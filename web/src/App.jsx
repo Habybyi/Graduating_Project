@@ -6,6 +6,10 @@ import { ChangePasswordPage } from "./pages/ChangePasswordPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { UsersPage } from "./pages/UsersPage";
 import { CustomersPage } from "./pages/CustomersPage";
+import { ProductsPage } from "./pages/ProductsPage";
+import { DeliveryNotesPage } from "./pages/DeliveryNotesPage";
+import { DeliveryNoteDetailPage } from "./pages/DeliveryNoteDetailPage";
+import { ScanPage } from "./pages/ScanPage";
 
 export const App = () => {
   return (
@@ -14,6 +18,10 @@ export const App = () => {
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<LoginPage />} />
+
+          {/* Public — the session token in the URL is the authorization */}
+          <Route path="/scan/:token" element={<ScanPage />} />
+
           <Route
             path="/change-password"
             element={
@@ -43,6 +51,30 @@ export const App = () => {
             element={
               <ProtectedRoute>
                 <CustomersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/products"
+            element={
+              <ProtectedRoute>
+                <ProductsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/delivery-notes"
+            element={
+              <ProtectedRoute>
+                <DeliveryNotesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/delivery-notes/:id"
+            element={
+              <ProtectedRoute>
+                <DeliveryNoteDetailPage />
               </ProtectedRoute>
             }
           />

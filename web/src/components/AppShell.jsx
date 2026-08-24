@@ -14,8 +14,8 @@ import { useAuth } from "../context/AuthContext";
 import styles from "../styles/neumorphic.module.css";
 
 const NAV_ITEMS = [
-  { to: "/dashboard", label: "Vytvoriť dodací list", icon: FiFileText, enabled: false },
-  { to: "/dashboard", label: "Databáza produktov", icon: FiPackage, enabled: false },
+  { to: "/delivery-notes", label: "Vytvoriť dodací list", icon: FiFileText, enabled: true },
+  { to: "/products", label: "Databáza produktov", icon: FiPackage, enabled: true },
   { to: "/customers", label: "Zákazníci", icon: FiTruck, enabled: true },
   { to: "/users", label: "Používatelia", icon: FiUsers, enabled: true, requireRole: "manager" },
   { to: "/dashboard", label: "Aktivita (log)", icon: FiActivity, enabled: false, requireRole: "manager" },
