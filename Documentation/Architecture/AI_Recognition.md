@@ -91,17 +91,20 @@ Not chosen yet. This is a new decision introduced by requiring per-instance/per-
 
 **Recommendation:** prototype the classical approach first against real bakery photos (cheap to try, no API cost) since kitchen crates are likely photographed against a plain, controlled background; fall back to a hosted segmentation model if it's too unreliable on real photos (especially for spotting faint cut lines on a uniformly-glazed cake). Final call: TBD, needs real sample photos to test against.
 
-## 🔓 Open technical decision: which embedding model/API
+**Worth trying first, given the embedding decision above:** Gemini's vision model can also return bounding boxes for objects in an image via a prompted request (no separate account/API needed — same `GEMINI_API_KEY`). If it's reliable enough on real crate photos, it would unify localization and classification onto one vendor instead of three moving parts (classical CV / SAM / embeddings). Untested so far — this is a lead for Phase 5, not a decision yet.
 
-Not chosen yet — to be decided together before backend coding starts. Realistic candidates:
+## ✅ Resolved: embedding model — Gemini multimodal embeddings
 
-| Option | How it works | Trade-off |
-|---|---|---|
-| **Hosted embedding API** (e.g. a CLIP-style model via a hosted inference API) | Backend sends the crop over HTTP, gets a vector back | No local ML infra/GPU needed, simplest to build and defend; depends on an external service + costs per call |
-| **Google Cloud Vision — Product Search** | Purpose-built for retail product recognition from reference images | Handles a lot of the matching logic for you; less "our own algorithm" to explain/defend, more vendor lock-in |
-| **Local embedding model** (e.g. a small CLIP model run in a Python service) | Runs on our own machine, no external dependency, no per-call cost | Needs a Python microservice next to the Node.js backend, more moving parts, CPU inference is fine for a demo but not fast |
+**Decided 2026-08-24.** Using `gemini-embedding-2` (Gemini API, `POST /v1beta/models/gemini-embedding-2:embedContent`) directly on the image bytes — no captioning step, no separate model to host. Implemented in [`server/src/services/embeddings.js`](../../server/src/services/embeddings.js).
 
-Given the backend is Node.js/Express (see [System_Overview.md](./System_Overview.md)), a **hosted embedding API called over HTTP** is the path of least friction — it avoids needing a second language/runtime just for this one step. Final choice still open, and worth picking together with the localization model since some providers (e.g. a single hosted vision API) might cover both steps.
+**Why this won over the other candidates:**
+- **Free tier**, and Adam already has a Gemini API key (used earlier for the wireframe mockups) — no new account, no cost, matching the "free" constraint over a paid hosted API.
+- **No second runtime** — it's an HTTP call from the existing Node.js backend, same shape as every other external API call in this project (SuperFaktúra included). No Python microservice needed, unlike the local-model option.
+- Genuinely multimodal — accepts image bytes directly (PNG/JPEG), 3072-dimension output.
+
+**Verified empirically before committing** (not just docs/marketing claims): sent two wireframe screenshots through it — identical image twice → cosine similarity `1.0000` (deterministic); two different screens → `0.70` (meaningfully different, not degenerate). Real vectors are ~39KB as JSON in `product_prototypes.embedding_vector`, vs. the old 32-value stub.
+
+**Known constraint:** only PNG and JPEG accepted — HEIC (iPhone's default photo format) would be rejected. Not an issue for the Samsung J5 (Android defaults to JPEG), but worth remembering if the phone ever changes. The upload endpoint returns a clear 422 error naming the failed file rather than crashing if this happens.
 
 ---
 

@@ -1,26 +1,45 @@
-import crypto from "node:crypto";
-
-// ⚠️ STUB — NOT A REAL EMBEDDING MODEL. ⚠️
+// Real embedding model, resolved 2026-08-24 — see the "Open technical
+// decision" section in Documentation/Architecture/AI_Recognition.md (now
+// updated to reflect this choice).
 //
-// This does not look at the image content at all — it derives a
-// deterministic pseudo-vector from the file's byte hash, purely so the rest
-// of the pipeline (upload → "embedding" → ProductPrototype/TestImage
-// storage → similarity matching) can be built and tested end to end.
-//
-// The real implementation is an open decision — see
-// Documentation/Architecture/AI_Recognition.md, "Open technical decision:
-// which embedding model/API" — to be picked together (a hosted CLIP-style
-// API is the current lean, given the Node.js backend). Swap this function
-// out once that's decided; nothing else in the codebase should need to
-// change, since callers only care about getting a fixed-length float array
-// back for a given image buffer.
-const EMBEDDING_DIMENSIONS = 32;
+// Uses Gemini's multimodal embedding model directly on the image bytes —
+// no captioning step, no separate localization model needed for this part.
+// Free tier, same GEMINI_API_KEY already used for the wireframe/mockup
+// generation earlier in this project. Verified empirically: identical
+// image -> cosine similarity 1.0, different images -> meaningfully lower.
+const MODEL = "gemini-embedding-2";
+const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:embedContent`;
 
-export async function computeEmbedding(imageBuffer) {
-  const hash = crypto.createHash("sha256").update(imageBuffer).digest();
-  const vector = [];
-  for (let i = 0; i < EMBEDDING_DIMENSIONS; i++) {
-    vector.push(hash[i % hash.length] / 255);
+export async function computeEmbedding(imageBuffer, mimeType = "image/jpeg") {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not set — check server/.env (see .env.example).");
   }
-  return vector;
+
+  const response = await fetch(API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    },
+    body: JSON.stringify({
+      content: {
+        parts: [
+          {
+            inline_data: {
+              mime_type: mimeType,
+              data: imageBuffer.toString("base64"),
+            },
+          },
+        ],
+      },
+    }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.error?.message || "Gemini embedding request failed.");
+  }
+
+  return data.embedding.values;
 }

@@ -99,7 +99,18 @@ router.post("/:id/packages", upload.array("photos"), async (req, res) => {
 
   let processed = 0;
   for (const file of req.files) {
-    const embedding = await computeEmbedding(file.buffer);
+    let embedding;
+    try {
+      embedding = await computeEmbedding(file.buffer, file.mimetype);
+    } catch (err) {
+      // Fail with whatever was already processed reported, rather than a
+      // bare 500 — e.g. an unsupported format (Gemini only accepts
+      // PNG/JPEG) should be a clear, actionable message, not a crash.
+      return res.status(422).json({
+        error: `Fotka '${file.originalname}' sa nedala spracovať: ${err.message}`,
+        processed,
+      });
+    }
 
     if (type === "training") {
       insertPrototypeStmt.run(product.id, JSON.stringify(embedding));
