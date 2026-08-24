@@ -17,6 +17,7 @@ The manager (currently: the father running the bakery) needs to be able to answe
 
 | `action` | Logged when |
 |---|---|
+| `customer.created` | A new customer is added |
 | `product.created` | A new product is added to the catalog |
 | `product.reference_photos_uploaded` | Reference/training photos are uploaded for a product (count included) |
 | `delivery_note.created` | A driver starts a new delivery note for a customer |

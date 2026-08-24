@@ -19,16 +19,16 @@ export function validatePasswordStrength(password) {
   return null;
 }
 
-const TEMP_PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
+// Deliberately excludes look-alike characters (0/O, 1/l/I) so it's easy to
+// read and copy off a handwritten paper slip. Only letters + digits, no
+// special characters — it only has to be typeable once at first login, not
+// meet the strength policy in Documentation/Navigation/Website.md. That
+// policy applies to the real password the driver chooses afterwards, via
+// validatePasswordStrength() below, at /auth/change-password.
+const TEMP_PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
 
-// Generates a random password that already satisfies validatePasswordStrength,
-// used for manager-issued temporary passwords (see Roles_And_Onboarding.md).
-export function generateTemporaryPassword(length = 12) {
-  let password;
-  do {
-    password = Array.from({ length }, () =>
-      TEMP_PASSWORD_CHARS[Math.floor(Math.random() * TEMP_PASSWORD_CHARS.length)]
-    ).join("");
-  } while (validatePasswordStrength(password) !== null);
-  return password;
+export function generateTemporaryPassword(length = 8) {
+  return Array.from({ length }, () =>
+    TEMP_PASSWORD_CHARS[Math.floor(Math.random() * TEMP_PASSWORD_CHARS.length)]
+  ).join("");
 }

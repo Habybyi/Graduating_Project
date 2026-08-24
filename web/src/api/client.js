@@ -27,4 +27,7 @@ export const api = {
   resetPassword: (token, userId) => request(`/users/${userId}/reset-password`, { method: "POST", token }),
   changeRole: (token, userId, role) =>
     request(`/users/${userId}/role`, { method: "PATCH", token, body: { role } }),
+  listCustomers: (token) => request("/customers", { token }),
+  createCustomer: (token, name, address) =>
+    request("/customers", { method: "POST", token, body: { name, address } }),
 };

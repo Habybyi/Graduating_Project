@@ -5,6 +5,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { ChangePasswordPage } from "./pages/ChangePasswordPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { UsersPage } from "./pages/UsersPage";
+import { CustomersPage } from "./pages/CustomersPage";
 
 export const App = () => {
   return (
@@ -34,6 +35,14 @@ export const App = () => {
             element={
               <ProtectedRoute requireRole="manager">
                 <UsersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customers"
+            element={
+              <ProtectedRoute>
+                <CustomersPage />
               </ProtectedRoute>
             }
           />

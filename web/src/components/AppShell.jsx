@@ -1,12 +1,24 @@
-import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  FiMenu,
+  FiX,
+  FiFileText,
+  FiPackage,
+  FiUsers,
+  FiActivity,
+  FiTruck,
+  FiLogOut,
+} from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
 import styles from "../styles/neumorphic.module.css";
 
 const NAV_ITEMS = [
-  { to: "/dashboard", label: "Vytvoriť dodací list", enabled: false },
-  { to: "/dashboard", label: "Databáza produktov", enabled: false },
-  { to: "/users", label: "Používatelia", enabled: true, requireRole: "manager" },
-  { to: "/dashboard", label: "Aktivita (log)", enabled: false, requireRole: "manager" },
+  { to: "/dashboard", label: "Vytvoriť dodací list", icon: FiFileText, enabled: false },
+  { to: "/dashboard", label: "Databáza produktov", icon: FiPackage, enabled: false },
+  { to: "/customers", label: "Zákazníci", icon: FiTruck, enabled: true },
+  { to: "/users", label: "Používatelia", icon: FiUsers, enabled: true, requireRole: "manager" },
+  { to: "/dashboard", label: "Aktivita (log)", icon: FiActivity, enabled: false, requireRole: "manager" },
 ];
 
 // Shared sidebar shell for every logged-in screen. Most nav items are
@@ -15,6 +27,8 @@ const NAV_ITEMS = [
 export const AppShell = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [collapsed, setCollapsed] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -22,33 +36,47 @@ export const AppShell = ({ children }) => {
   };
 
   return (
-    <div className={styles.page} style={{ alignItems: "flex-start" }}>
-      <div className={styles.cardWide} style={{ display: "flex", gap: "2rem", minHeight: "70vh" }}>
-        <nav style={{ width: "220px", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          {NAV_ITEMS.filter((item) => !item.requireRole || item.requireRole === user?.role).map((item) =>
-            item.enabled ? (
-              <Link key={item.label} to={item.to} className={styles.secondaryButton} style={{ textAlign: "left" }}>
-                {item.label}
+    <div className={styles.page}>
+      <div className={styles.cardWide} style={{ display: "flex", gap: "1.5rem" }}>
+        <nav className={collapsed ? styles.sidebarCollapsed : styles.sidebar}>
+          <button
+            type="button"
+            className={styles.sidebarToggle}
+            onClick={() => setCollapsed((v) => !v)}
+            title={collapsed ? "Rozbaliť menu" : "Zbaliť menu"}
+          >
+            {collapsed ? <FiMenu /> : <FiX />}
+          </button>
+
+          {NAV_ITEMS.filter((item) => !item.requireRole || item.requireRole === user?.role).map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.to;
+
+            if (!item.enabled) {
+              return (
+                <span key={item.label} className={styles.navItemDisabled} title="Ešte nie je hotové">
+                  <Icon />
+                  {!collapsed && item.label}
+                </span>
+              );
+            }
+
+            return (
+              <Link key={item.label} to={item.to} className={isActive ? styles.navItemActive : styles.navItem}>
+                <Icon />
+                {!collapsed && item.label}
               </Link>
-            ) : (
-              <span
-                key={item.label}
-                className={styles.secondaryButton}
-                style={{ textAlign: "left", opacity: 0.5, cursor: "not-allowed" }}
-                title="Ešte nie je hotové"
-              >
-                {item.label}
-              </span>
-            )
-          )}
+            );
+          })}
 
           <div style={{ flex: 1 }} />
-          <button type="button" onClick={handleLogout} className={styles.linkButton}>
-            Odhlásiť sa ({user?.username})
+          <button type="button" onClick={handleLogout} className={styles.navItem}>
+            <FiLogOut />
+            {!collapsed && `Odhlásiť sa (${user?.username})`}
           </button>
         </nav>
 
-        <main style={{ flex: 1 }}>{children}</main>
+        <main style={{ flex: 1, minWidth: 0 }}>{children}</main>
       </div>
     </div>
   );

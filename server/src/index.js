@@ -4,6 +4,7 @@ import cors from "cors";
 import { db } from "./db/connection.js";
 import authRoutes from "./routes/auth.js";
 import usersRoutes from "./routes/users.js";
+import customersRoutes from "./routes/customers.js";
 
 if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET is not set — check server/.env (see .env.example).");
@@ -20,6 +21,7 @@ app.get("/health", (req, res) => {
 
 app.use("/auth", authRoutes);
 app.use("/users", usersRoutes);
+app.use("/customers", customersRoutes);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

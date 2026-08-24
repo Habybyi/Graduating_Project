@@ -13,6 +13,7 @@
   --neu-accent: #4f7df3;
   --neu-accent-dark: #3d63d1;
   --neu-error: #e2483a;
+  --neu-row-alt: rgba(198, 204, 214, 0.28);
 }
 
 .page {
@@ -22,15 +23,15 @@
   align-items: center;
   justify-content: center;
   background: linear-gradient(145deg, #eef2f7, #dde3ec);
-  padding: 1.5rem;
+  padding: 2rem;
 }
 
 .card {
   width: 100%;
-  max-width: 420px;
+  max-width: 460px;
   border-radius: 28px;
   background: var(--neu-bg);
-  padding: 2.5rem 2rem;
+  padding: 2.75rem 2.25rem;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   box-shadow:
@@ -41,9 +42,13 @@
   border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
+/* The app shell (dashboard/users/customers) — bigger stage, always centered
+   in the viewport rather than pinned to the top. */
 .cardWide {
   composes: card;
-  max-width: 900px;
+  max-width: 1100px;
+  min-height: 640px;
+  padding: 2.5rem;
 }
 
 .form {
@@ -58,6 +63,7 @@
   text-align: center;
   font-weight: 700;
   margin: 0 0 1.5rem;
+  font-size: 1.5rem;
 }
 
 .subtitle {
@@ -87,6 +93,14 @@
     0 0 0 2px rgba(79, 125, 243, 0.35);
 }
 
+/* Bigger variant for the "create user / create customer" panels — those
+   forms should read clearly at a glance, not blend into the page. */
+.inputWrapperLarge {
+  composes: inputWrapper;
+  padding: 1.1rem 1.3rem;
+  border-radius: 18px;
+}
+
 .input {
   flex: 1;
   background: transparent;
@@ -95,6 +109,11 @@
   color: var(--neu-text);
   font-size: 0.95rem;
   min-width: 0;
+}
+
+.inputLarge {
+  composes: input;
+  font-size: 1.05rem;
 }
 
 .input::placeholder {
@@ -126,6 +145,17 @@
     inset 0 1px 1px rgba(255, 255, 255, 0.3);
   cursor: pointer;
   transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.primaryButtonLarge {
+  composes: primaryButton;
+  padding: 1.1rem 1.5rem;
+  font-size: 1.05rem;
+  border-radius: 18px;
 }
 
 .primaryButton:hover {
@@ -154,6 +184,9 @@
     inset 3px 3px 7px var(--neu-bg-dark),
     inset -3px -3px 7px var(--neu-bg-light);
   transition: color 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
 }
 
 .secondaryButton:hover {
@@ -168,40 +201,57 @@
   font-weight: 500;
   cursor: pointer;
   text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .linkButton:hover {
   text-decoration: underline;
 }
 
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
 .table {
   width: 100%;
+  min-width: 480px;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 
 .table th {
   text-align: left;
   color: var(--neu-text-muted);
   font-weight: 600;
-  padding: 0.6rem 0.75rem;
+  padding: 0.85rem 1rem;
   border-bottom: 2px solid var(--neu-bg-dark);
 }
 
 .table td {
-  padding: 0.6rem 0.75rem;
+  padding: 0.85rem 1rem;
   color: var(--neu-text);
-  border-bottom: 1px solid var(--neu-bg-dark);
+}
+
+.table tbody tr:nth-child(even) {
+  background: var(--neu-row-alt);
+}
+
+.table tbody tr {
+  border-radius: 10px;
 }
 
 .badge {
   display: inline-block;
-  padding: 0.2rem 0.6rem;
+  padding: 0.25rem 0.7rem;
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 600;
   background: var(--neu-bg-dark);
   color: var(--neu-text);
+  white-space: nowrap;
 }
 
 .calloutBox {
@@ -212,4 +262,107 @@
   color: var(--neu-text);
   font-size: 0.9rem;
   line-height: 1.5;
+}
+
+/* Panel wrapper for "create X" forms — visually separated from the table
+   below it, with room for a heading + bigger fields. */
+.formPanel {
+  border-radius: 20px;
+  background: var(--neu-bg);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow:
+    inset 3px 3px 8px var(--neu-bg-dark),
+    inset -3px -3px 8px var(--neu-bg-light);
+}
+
+.formPanelTitle {
+  color: var(--neu-text);
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin: 0 0 1rem;
+}
+
+.formRow {
+  display: flex;
+  gap: 1rem;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+/* ---- Sidebar ---- */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 240px;
+  flex: none;
+  transition: width 0.2s ease;
+}
+
+.sidebarCollapsed {
+  composes: sidebar;
+  width: 76px;
+}
+
+.sidebarToggle {
+  border: none;
+  background: var(--neu-bg);
+  color: var(--neu-text-muted);
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-bottom: 0.75rem;
+  box-shadow:
+    3px 3px 8px var(--neu-bg-dark),
+    -3px -3px 8px var(--neu-bg-light);
+  font-size: 1.2rem;
+  flex: none;
+}
+
+.sidebarToggle:hover {
+  color: var(--neu-accent-dark);
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  color: var(--neu-text-muted);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.navItem svg {
+  flex: none;
+  font-size: 1.2rem;
+}
+
+.navItemActive {
+  composes: navItem;
+  color: var(--neu-accent-dark);
+  background: var(--neu-bg);
+  box-shadow:
+    inset 3px 3px 7px var(--neu-bg-dark),
+    inset -3px -3px 7px var(--neu-bg-light);
+}
+
+.navItemDisabled {
+  composes: navItem;
+  opacity: 0.45;
+  cursor: not-allowed;
 }
