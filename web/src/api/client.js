@@ -1,4 +1,8 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+// Deliberately NOT hardcoded to "localhost" — when this page is opened on
+// a phone via the PC's LAN IP, "localhost" would mean the phone itself.
+// Using the same host the page was loaded from means this works whether
+// you're on the PC (localhost) or a phone (LAN IP) without any config.
+const API_URL = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`;
 
 async function request(path, { method = "GET", body, token } = {}) {
   const response = await fetch(`${API_URL}${path}`, {
@@ -64,6 +68,7 @@ export const api = {
   setDeliveryNoteStatus: (token, noteId, status) =>
     request(`/delivery-notes/${noteId}/status`, { method: "PATCH", token, body: { status } }),
   createSession: (token, noteId) => request(`/sessions/for-note/${noteId}`, { method: "POST", token }),
+  getNetworkInfo: () => request("/network-info"),
   getScanSession: (sessionToken) => request(`/sessions/${sessionToken}`),
   addScanItem: (sessionToken, productId, quantity) =>
     request(`/sessions/${sessionToken}/items`, { method: "POST", body: { productId, quantity } }),
