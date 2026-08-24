@@ -39,6 +39,8 @@ The goal is to make the process simple, fast, and automatic. Drivers can open th
 ### 🏗️ Architecture
 
 - [System Overview](./Documentation/Architecture/System_Overview.md)
+- [Roles & Onboarding](./Documentation/Architecture/Roles_And_Onboarding.md)
+- [Activity Log](./Documentation/Architecture/Activity_Log.md)
 - [Data Flow](./Documentation/Architecture/Data_Flow.md)
 - [Data Model](./Documentation/Architecture/Data_Model.md)
 - [AI Recognition](./Documentation/Architecture/AI_Recognition.md)

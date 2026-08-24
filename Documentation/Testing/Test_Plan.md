@@ -16,6 +16,7 @@ Training photos are deleted right after their embedding is extracted (see [AI_Re
 ## 📦 What the test set contains
 
 - A handful of photos per product (e.g. 2–3), taken separately from the 5+ reference photos used for training.
+- **Taken on the actual delivery phone** (company Samsung Galaxy J5) — same rule as the reference photos, see [How_to_create_photos.md](../Tutorials/How_to_create_photos.md). Testing on nicer-camera photos would overstate real-world accuracy.
 - Ideally varied on purpose: different lighting, different angle than the training set, maybe a slightly messier real-world crate — the point is to simulate what a driver's phone photo will actually look like, not a perfect studio shot.
 - Stored in `TestImage` (see [Data_Model.md](../Architecture/Data_Model.md)), tagged with the correct/expected product.
 
@@ -41,7 +42,9 @@ Beyond the aggregate accuracy number, a few scenarios are worth testing (and sho
 |---|---|
 | Two visually similar products (e.g. two chocolate cakes with different filling) | Whether embeddings actually separate look-alikes, or whether the product catalog needs more/better reference photos |
 | Photo of a product **not in the system at all** | The system should show low confidence and fall back to manual selection, not confidently misidentify it as something else |
-| Group photo of many small identical items | Confirms product *type* is still recognized correctly even though quantity is entered manually (see the [counting scope note](../Architecture/AI_Recognition.md#-counting-strategy--scope-note)) |
+| Group photo of many mixed small items (e.g. venčeky + špice in one crate) | Confirms localization finds each instance and classification handles a mixed crate, per the [counting & business rules](../Architecture/AI_Recognition.md#-counting--business-rules) |
+| A single-flavor whole cake, pre-cut into slices | Confirms the aggregation rule correctly collapses N matching slices into 1 unit, not N units |
+| A half-and-half cake (two flavors in one physical cake) | The one scenario the naive "1 photo = 1 embedding" design would have gotten wrong — confirms per-slice classification correctly counts each flavor separately (e.g. 7+7) instead of collapsing or misreading it as one product |
 | Poor lighting / off-angle photo | Realistic worst case for what a driver will actually photograph in a cooler |
 
 ---

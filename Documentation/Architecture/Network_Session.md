@@ -5,6 +5,10 @@
 
 ---
 
+## 📱 Current scope: one dedicated company phone
+
+The capture device is a single, company-owned phone (Samsung Galaxy J5), not each driver's personal phone. This simplifies the HTTPS setup below considerably — installing the `mkcert` root certificate is a **one-time setup on one known device**, not an ongoing onboarding step for multiple people's personal phones. If the system ever needs to support drivers using their own phones, that installation step would need to become part of a proper onboarding flow — not a concern for the current scope.
+
 ## 🏠 Current scope: local WiFi only
 
 Per the project decision, the PC (running the dashboard + backend) and the driver's phone are on the **same WiFi network**, no public hosting for now. This is enough for development and for the maturita defense demo.
@@ -13,11 +17,13 @@ Per the project decision, the PC (running the dashboard + backend) and the drive
 
 ---
 
-## ⚠️ Important constraint: camera access needs HTTPS
+## ⚠️ Constraint: live camera preview needs HTTPS (only for the optional capture mode)
 
-Mobile browsers only allow camera access (`getUserMedia`) on a **secure context** — either `https://` or `http://localhost`. A plain `http://192.168.x.x:port` link, which is what a naive local-network QR code would use, is **not** considered secure by the browser, so the phone would be blocked from opening the camera at all.
+Mobile browsers only allow live camera access (`getUserMedia`, used for an in-browser camera preview) on a **secure context** — either `https://` or `http://localhost`. A plain `http://192.168.x.x:port` link, which is what a naive local-network QR code would use, is **not** considered secure by the browser, so the phone would be blocked from opening a live camera preview at all.
 
-This needs a fix before the capture page can work at all:
+**This only affects the "Capture" mode described in [Data_Flow.md](./Data_Flow.md#-a-creating-a-delivery-main-flow)** — the primary "Upload" mode (`<input type="file" multiple>`, picking photos already taken with the phone's normal camera app) is a native OS file picker, not `getUserMedia`, and works fine over plain HTTP. So this fix is **not a blocker for the first working version** — it only matters once/if the live in-browser capture mode is built.
+
+If/when that mode is built, here's the fix:
 
 | Option | How | Trade-off |
 |---|---|---|
@@ -35,7 +41,7 @@ This needs a fix before the capture page can work at all:
 2. QR code encodes: `https://<pc-lan-ip>:<port>/scan/<token>`
 3. Phone scans → opens the capture page directly — **no login required on the phone**, the token itself is the authorization for that one delivery session.
 4. Session `expiresAt` is short (suggest 30–60 minutes) — long enough for one delivery, short enough that an old QR code (e.g. left on screen, screenshotted) can't be reused later.
-5. Once the delivery note is marked `ready` or the session expires, the token stops working.
+5. Once the delivery note moves to `ready_for_review` (all photos uploaded and processed) or the session expires, the token stops working.
 
 ## 🔒 Security notes
 

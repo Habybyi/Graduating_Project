@@ -16,6 +16,7 @@ erDiagram
     PRODUCT ||--o{ DELIVERY_NOTE_ITEM : "identified as"
     PRODUCT ||--o{ PRODUCT_PROTOTYPE : "learned from"
     PRODUCT ||--o{ TEST_IMAGE : "validated with"
+    USER ||--o{ ACTIVITY_LOG : performs
 ```
 
 ---
@@ -23,14 +24,16 @@ erDiagram
 ## Entities
 
 ### `User`
-Driver or manager account.
+Driver or manager account. See [Roles_And_Onboarding.md](./Roles_And_Onboarding.md) for the full account lifecycle.
 
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid/int | |
 | `username` | string | |
 | `passwordHash` | string | real auth, not yet wired into the app (see [Login_Auth.jsx](../../packing/src/scripts/Login_Auth.jsx)) |
-| `role` | enum | `driver` \| `manager` — managers manage products, drivers create deliveries |
+| `role` | string (not a hardcoded 2-value enum) | `driver` \| `manager` today. Stored as a plain string, not a fixed enum type, so a future role (e.g. `production`) can be introduced later without a schema change — only the app's permission checks need updating |
+| `mustChangePassword` | bool | `true` when the account was just created or reset by a manager; the app forces a password-change screen before anything else until this is cleared |
+| `createdAt` | datetime | |
 
 ### `Customer`
 | Field | Type | Notes |
@@ -47,7 +50,7 @@ A recognizable dessert/cake type.
 |---|---|---|
 | `id` | uuid/int | |
 | `name` | string | e.g. "Venček", "Čokoládová torta" |
-| `category` | string, nullable | e.g. single cake vs. small multi-item dessert — relevant for the [counting scope note](./AI_Recognition.md#-counting-strategy--scope-note) |
+| `unitType` | enum | `piece` (sold/counted individually — venček, špic, punčík) or `whole` (sold as a whole cake — torty). Drives the counting rollup logic in [AI_Recognition.md](./AI_Recognition.md#-counting--business-rules); set once when the product is created, not inferred per photo |
 | `isActive` | bool | can be deactivated instead of deleted |
 | `createdAt` | datetime | |
 
@@ -90,14 +93,14 @@ The short-lived link between the PC (QR generator) and the phone (QR scanner).
 | `expiresAt` | datetime | short expiry (e.g. 30–60 min), see [Network_Session.md](./Network_Session.md) |
 
 ### `DeliveryNote`
-One "dodací list" in progress or finished.
+One "dodací list" in progress or finished. A driver can have several of these open at once, at different stages — see [the pipeline note in Data_Flow.md](./Data_Flow.md#-a-creating-a-delivery-main-flow), so `status` doubles as what drives the dashboard's queue view.
 
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid/int | |
 | `customerId` | FK → Customer | |
 | `createdByUserId` | FK → User | |
-| `status` | enum | `draft` \| `ready` \| `invoiced` |
+| `status` | enum | `draft` (photos still being uploaded) → `processing` (AI working through the batch) → `ready_for_review` (needs the driver's confirm/correct pass) → `invoiced` (SuperFaktúra document generated) |
 | `superfakturaDocId` | int, nullable | set once SuperFaktúra generates the document |
 | `createdAt` | datetime | |
 
@@ -109,9 +112,26 @@ One line item — a recognized (or manually picked) product and its quantity.
 | `id` | uuid/int | |
 | `deliveryNoteId` | FK → DeliveryNote | |
 | `productId` | FK → Product | |
-| `quantity` | int | |
-| `aiConfidence` | float, nullable | null if entered fully manually |
+| `quantity` | int | for `piece` products: count of matching detected instances. For `whole` products: either 1 (uniform cake) or a per-flavor slice count (split cake) — see [counting rules](./AI_Recognition.md#-counting--business-rules) |
+| `aiConfidence` | float, nullable | null if entered fully manually; derived from the contributing detected region(s) otherwise |
 | `wasManuallyCorrected` | bool | true if the driver overrode the AI's suggestion — useful data for later accuracy analysis |
+| `createdAt` | datetime | |
+
+---
+
+### `ActivityLog`
+Append-only audit trail — see [Activity_Log.md](./Activity_Log.md) for the full design (what's logged, the timeline UI, filters).
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | uuid/int | |
+| `userId` | FK → User | who performed the action |
+| `userRole` | string (snapshot) | the actor's role **at the time**, not a live reference — stays accurate if their role changes later |
+| `action` | string | e.g. `product.created`, `delivery_note.item_corrected` — see the full list in [Activity_Log.md](./Activity_Log.md) |
+| `entityType` | string | `Product` \| `DeliveryNote` \| `User` |
+| `entityId` | int/uuid | which record this refers to (not a strict FK — the record could theoretically be gone later, the log should still read fine) |
+| `summary` | string | precomputed, human-readable line for the timeline, e.g. "Pridaný produkt 'Venček'" |
+| `metadata` | JSON, nullable | action-specific detail, e.g. a correction's before/after value |
 | `createdAt` | datetime | |
 
 ---

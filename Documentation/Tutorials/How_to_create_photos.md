@@ -2,6 +2,8 @@
 
 ## ⚠️ Important
 
+- **Take every photo (reference and test) on the actual delivery phone** (the company Samsung Galaxy J5), not a nicer phone. Recognition will run on real photos taken by that same device in the field, so training/testing on higher-quality photos from a different phone would be misleading — accuracy would look better during development than it performs in real use.
+
 - One reference package for one dessert or cake should contain at least 5 photos.
   - One photo from the top and one photo from each of the four sides at an angle.
 - Each package should be visually different from the others. Change the angle, lighting, background, plate, and composition.

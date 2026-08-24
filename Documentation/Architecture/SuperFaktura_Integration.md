@@ -90,7 +90,7 @@ Since this is a delivery note (not a priced invoice), `unit_price` and `tax` are
 ## 📥 After the call
 
 - On success, SuperFaktúra returns a document ID → stored in `DeliveryNote.superfakturaDocId`.
-- `DeliveryNote.status` moves from `ready` to `invoiced`.
+- `DeliveryNote.status` moves from `ready_for_review` to `invoiced`.
 - The generated PDF can be fetched/displayed to the driver (exact download endpoint to confirm against the live docs when implementing).
 
 ---

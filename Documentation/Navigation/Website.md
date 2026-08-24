@@ -20,20 +20,24 @@
 - In this menu, you will find the main options:
   - **Create packing list**
   - **Database / Packages**
+  - **Users** (managers only) — create driver accounts, reset a forgotten password, change roles. See [Roles & Onboarding](../Architecture/Roles_And_Onboarding.md) for the full process.
+  - **Activity log** (managers only) — a filterable timeline of who did what (products added, deliveries created/invoiced, corrections made, account changes). Filter by role, user, action type, or date. Clicking an entry opens the related delivery note or product. See [Activity Log](../Architecture/Activity_Log.md).
 
 ### 🧾 Create packing list
 
 1. Select or create the customer you're delivering to.
 2. Click **Create packing list** — a QR code appears on screen.
 3. Scan the QR code with your phone (must be on the same WiFi as this PC). Your phone opens the photo capture screen automatically — no login needed there.
-4. For each crate/box, take a photo on your phone.
-   - The AI suggests a product and quantity based on the photo.
+4. Photograph the crates, then get the photos into the app one of two ways:
+   - **Upload (recommended for many crates):** take photos with your phone's normal camera app for all the crates first, then tap **Upload** and select them all at once — faster than doing it one by one.
+   - **Capture:** tap **Take photo** to use the camera directly inside the app, one crate at a time.
+5. For each photo, the AI suggests a product and quantity.
    - If it's confident, the suggestion is pre-filled — just confirm it.
    - If it's not confident, pick the product yourself from the list.
-   - Always check/edit the quantity before confirming.
-5. Repeat for every crate until the order is fully packed.
-6. Back on the PC (or on your phone), review the full list and totals.
-7. Click **Generate delivery note** — this creates the real delivery note through SuperFaktúra and shows you the PDF.
+   - Check the photo thumbnail next to each result if anything looks off — helps you trace a wrong match back to the right crate.
+6. Repeat until every crate is accounted for.
+7. Back on the PC (or on your phone), review the full list and totals.
+8. Click **Generate delivery note** — this creates the real delivery note through SuperFaktúra and shows you the PDF.
 
 > [!TIP]
 > The QR code expires after a while for security — if it stops working mid-delivery, just refresh the page on the PC to get a new one.
