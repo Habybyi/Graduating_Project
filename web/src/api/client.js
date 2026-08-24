@@ -73,6 +73,17 @@ export const api = {
     request(`/delivery-notes/${noteId}/items/${itemId}`, { method: "DELETE", token }),
   setDeliveryNoteStatus: (token, noteId, status) =>
     request(`/delivery-notes/${noteId}/status`, { method: "PATCH", token, body: { status } }),
+  generateInvoice: (token, noteId) => request(`/delivery-notes/${noteId}/invoice`, { method: "POST", token }),
+  downloadDeliveryNotePdf: async (token, noteId) => {
+    const response = await fetch(`${API_URL}/delivery-notes/${noteId}/pdf`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => null);
+      throw new Error(data?.error || "Nepodarilo sa stiahnuť PDF.");
+    }
+    return response.blob();
+  },
   createSession: (token, noteId) => request(`/sessions/for-note/${noteId}`, { method: "POST", token }),
   getNetworkInfo: () => request("/network-info"),
   getActivityLog: (token, filters = {}) => {

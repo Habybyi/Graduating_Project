@@ -102,6 +102,7 @@ One "dodací list" in progress or finished. A driver can have several of these o
 | `createdByUserId` | FK → User | |
 | `status` | enum | `draft` (photos still being uploaded) → `processing` (AI working through the batch) → `ready_for_review` (needs the driver's confirm/correct pass) → `invoiced` (SuperFaktúra document generated) |
 | `superfakturaDocId` | int, nullable | set once SuperFaktúra generates the document |
+| `superfakturaToken` | string, nullable | required alongside the doc id to fetch the PDF later — never exposed to the frontend, only used server-side (see [SuperFaktura_Integration.md](./SuperFaktura_Integration.md)) |
 | `createdAt` | datetime | |
 
 ### `DeliveryNoteItem`

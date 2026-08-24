@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS delivery_notes (
   status                TEXT NOT NULL DEFAULT 'draft'
                           CHECK (status IN ('draft', 'processing', 'ready_for_review', 'invoiced')),
   superfaktura_doc_id   INTEGER,
+  superfaktura_token    TEXT, -- required alongside the doc id to fetch the PDF later
+  superfaktura_number   TEXT, -- human-readable doc number, e.g. "DOD2026001" — safe to show in the UI
   created_at            TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

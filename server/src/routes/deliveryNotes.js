@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "../db/connection.js";
 import { requireAuth } from "../middleware/auth.js";
 import { logActivity } from "../services/activityLog.js";
+import { createDeliveryDocument, fetchDeliveryPdf } from "../services/superfaktura.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -20,7 +21,9 @@ const listStmt = db.prepare(`
 
 const getNoteStmt = db.prepare(`
   SELECT
-    dn.id, dn.status, dn.superfaktura_doc_id AS superfakturaDocId, dn.created_at AS createdAt,
+    dn.id, dn.status, dn.superfaktura_doc_id AS superfakturaDocId,
+    dn.superfaktura_token AS superfakturaToken, dn.superfaktura_number AS superfakturaNumber,
+    dn.created_at AS createdAt,
     c.id AS customerId, c.name AS customerName, c.address AS customerAddress,
     u.username AS createdByUsername
   FROM delivery_notes dn
@@ -51,11 +54,19 @@ const upsertItemStmt = db.prepare(`
 `);
 const deleteItemStmt = db.prepare("DELETE FROM delivery_note_items WHERE id = ? AND delivery_note_id = ?");
 const updateStatusStmt = db.prepare("UPDATE delivery_notes SET status = ? WHERE id = ?");
+const setInvoicedStmt = db.prepare(`
+  UPDATE delivery_notes
+  SET status = 'invoiced', superfaktura_doc_id = ?, superfaktura_token = ?, superfaktura_number = ?
+  WHERE id = ?
+`);
 
+// superfakturaToken is intentionally not exposed to the frontend — it
+// isn't needed there, the PDF is fetched through our own proxy route below.
 function loadNoteWithItems(id) {
   const note = getNoteStmt.get(id);
   if (!note) return null;
-  return { ...note, items: getItemsStmt.all(id) };
+  const { superfakturaToken, ...publicFields } = note;
+  return { ...publicFields, items: getItemsStmt.all(id) };
 }
 
 router.get("/", (req, res) => {
@@ -120,6 +131,67 @@ router.patch("/:id/status", (req, res) => {
 
   updateStatusStmt.run(status, note.id);
   res.json(loadNoteWithItems(note.id));
+});
+
+// Generates the real delivery note document via SuperFaktúra — see
+// Documentation/Architecture/SuperFaktura_Integration.md. Only allowed
+// once the note is ready_for_review and has at least one item, so a
+// half-empty draft can't accidentally get invoiced.
+router.post("/:id/invoice", async (req, res) => {
+  const note = getNoteStmt.get(req.params.id);
+  if (!note) {
+    return res.status(404).json({ error: "Dodací list neexistuje." });
+  }
+  if (note.status !== "ready_for_review") {
+    return res.status(409).json({ error: "Dodací list musí byť najprv označený ako pripravený na kontrolu." });
+  }
+
+  const items = getItemsStmt.all(note.id);
+  if (items.length === 0) {
+    return res.status(400).json({ error: "Dodací list nemá žiadne položky." });
+  }
+
+  let doc;
+  try {
+    doc = await createDeliveryDocument({
+      customerName: note.customerName,
+      customerAddress: note.customerAddress,
+      items: items.map((i) => ({ name: i.productName, quantity: i.quantity })),
+    });
+  } catch (err) {
+    return res.status(502).json({ error: err.message });
+  }
+
+  setInvoicedStmt.run(doc.id, doc.token, doc.formattedNumber, note.id);
+
+  logActivity({
+    actingUser: req.user,
+    action: "delivery_note.invoiced",
+    entityType: "DeliveryNote",
+    entityId: note.id,
+    summary: `${req.user.username} vygeneroval dodací list ${doc.formattedNumber} cez SuperFaktúru`,
+    metadata: { superfakturaDocId: doc.id, formattedNumber: doc.formattedNumber },
+  });
+
+  res.json(loadNoteWithItems(note.id));
+});
+
+// Proxies the PDF through our backend rather than exposing the
+// SuperFaktúra token/credentials to the browser directly.
+router.get("/:id/pdf", async (req, res) => {
+  const note = getNoteStmt.get(req.params.id);
+  if (!note || !note.superfakturaDocId || !note.superfakturaToken) {
+    return res.status(404).json({ error: "Pre tento dodací list ešte nebolo vygenerované PDF." });
+  }
+
+  try {
+    const pdfBuffer = await fetchDeliveryPdf(note.superfakturaDocId, note.superfakturaToken);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="dodaci-list-${note.id}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
 });
 
 export default router;

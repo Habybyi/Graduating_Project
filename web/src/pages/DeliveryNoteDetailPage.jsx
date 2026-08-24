@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { FiPlus, FiTrash2, FiCheckCircle, FiSmartphone } from "react-icons/fi";
+import { FiPlus, FiTrash2, FiCheckCircle, FiSmartphone, FiFileText, FiDownload } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api/client";
 import { AppShell } from "../components/AppShell";
@@ -25,6 +25,8 @@ export const DeliveryNoteDetailPage = () => {
   const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState("");
   const [showQr, setShowQr] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const load = async () => {
     setNote(await api.getDeliveryNote(token, id));
@@ -59,6 +61,36 @@ export const DeliveryNoteDetailPage = () => {
     setNote(await api.setDeliveryNoteStatus(token, id, "ready_for_review"));
   };
 
+  const handleGenerateInvoice = async () => {
+    setError("");
+    setGenerating(true);
+    try {
+      setNote(await api.generateInvoice(token, id));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    setError("");
+    setDownloading(true);
+    try {
+      const blob = await api.downloadDeliveryNotePdf(token, id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `dodaci-list-${note.superfakturaNumber || note.id}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   if (!note) {
     return (
       <AppShell>
@@ -78,6 +110,7 @@ export const DeliveryNoteDetailPage = () => {
       </h1>
       <p className={styles.subtitle} style={{ textAlign: "left", marginBottom: "1.5rem" }}>
         {note.customerAddress} · <span className={styles.badge}>{STATUS_LABELS[note.status] || note.status}</span>
+        {note.superfakturaNumber && <> · {note.superfakturaNumber}</>}
       </p>
 
       {note.status === "draft" && (
@@ -162,6 +195,30 @@ export const DeliveryNoteDetailPage = () => {
       {note.status === "draft" && note.items.length > 0 && (
         <button type="button" className={styles.primaryButtonLarge} style={{ marginTop: "1.5rem" }} onClick={handleMarkReady}>
           <FiCheckCircle /> Označiť ako pripravené na kontrolu
+        </button>
+      )}
+
+      {note.status === "ready_for_review" && (
+        <button
+          type="button"
+          className={styles.primaryButtonLarge}
+          style={{ marginTop: "1.5rem" }}
+          onClick={handleGenerateInvoice}
+          disabled={generating}
+        >
+          <FiFileText /> {generating ? "Generujem cez SuperFaktúru…" : "Vygenerovať dodací list"}
+        </button>
+      )}
+
+      {note.status === "invoiced" && (
+        <button
+          type="button"
+          className={styles.primaryButtonLarge}
+          style={{ marginTop: "1.5rem" }}
+          onClick={handleDownloadPdf}
+          disabled={downloading}
+        >
+          <FiDownload /> {downloading ? "Sťahujem…" : "Stiahnuť PDF"}
         </button>
       )}
     </AppShell>
