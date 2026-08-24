@@ -7,6 +7,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { UsersPage } from "./pages/UsersPage";
 import { CustomersPage } from "./pages/CustomersPage";
 import { ProductsPage } from "./pages/ProductsPage";
+import { ProductDetailPage } from "./pages/ProductDetailPage";
 import { DeliveryNotesPage } from "./pages/DeliveryNotesPage";
 import { DeliveryNoteDetailPage } from "./pages/DeliveryNoteDetailPage";
 import { ScanPage } from "./pages/ScanPage";
@@ -59,6 +60,14 @@ export const App = () => {
             element={
               <ProtectedRoute>
                 <ProductsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/products/:id"
+            element={
+              <ProtectedRoute>
+                <ProductDetailPage />
               </ProtectedRoute>
             }
           />

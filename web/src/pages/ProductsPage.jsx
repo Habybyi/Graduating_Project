@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { FiPackage } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api/client";
@@ -15,6 +16,7 @@ const UNIT_TYPES = [
 // Documentation/Architecture/AI_Recognition.md).
 export const ProductsPage = () => {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [newName, setNewName] = useState("");
   const [newUnitType, setNewUnitType] = useState("piece");
@@ -92,7 +94,7 @@ export const ProductsPage = () => {
           </thead>
           <tbody>
             {products.map((p) => (
-              <tr key={p.id}>
+              <tr key={p.id} onClick={() => navigate(`/products/${p.id}`)} style={{ cursor: "pointer" }}>
                 <td>{p.name}</td>
                 <td>
                   <span className={styles.badge}>{p.unitType === "whole" ? "celá torta" : "kus"}</span>

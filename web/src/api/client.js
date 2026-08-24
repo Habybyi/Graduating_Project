@@ -17,6 +17,19 @@ async function request(path, { method = "GET", body, token } = {}) {
   return data;
 }
 
+async function requestForm(path, { token, formData } = {}) {
+  const response = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(data?.error || "Niečo sa pokazilo. Skús to znova.");
+  }
+  return data;
+}
+
 export const api = {
   login: (username, password) => request("/auth/login", { method: "POST", body: { username, password } }),
   changePassword: (token, newPassword) =>
@@ -33,6 +46,13 @@ export const api = {
   listProducts: (token) => request("/products", { token }),
   createProduct: (token, name, unitType) =>
     request("/products", { method: "POST", token, body: { name, unitType } }),
+  getProduct: (token, id) => request(`/products/${id}`, { token }),
+  uploadPackage: (token, productId, type, files) => {
+    const formData = new FormData();
+    formData.append("type", type);
+    for (const file of files) formData.append("photos", file);
+    return requestForm(`/products/${productId}/packages`, { token, formData });
+  },
   listDeliveryNotes: (token) => request("/delivery-notes", { token }),
   getDeliveryNote: (token, id) => request(`/delivery-notes/${id}`, { token }),
   createDeliveryNote: (token, customerId) =>
