@@ -36,7 +36,7 @@ sequenceDiagram
 
 ### Step by step
 
-1. **Login** — driver logs into the PC dashboard. *(Currently mocked in [LoginPage.jsx](../../packing/src/pages/LoginPage.jsx); real auth via [Login_Auth.jsx](../../packing/src/scripts/Login_Auth.jsx) is planned but not wired in yet.)*
+1. **Login** — driver logs into the PC dashboard. *(Real JWT auth built in Phase 1, see [Roles_And_Onboarding.md](./Roles_And_Onboarding.md).)*
 2. **Select customer** — driver opens an existing customer or creates a new one.
 3. **Create delivery note** — backend creates a `DeliveryNote` (status `draft`) and a `DeliverySession` (a short-lived token tied to that delivery note).
 4. **QR code** — PC dashboard renders a QR code encoding a URL to the capture page, e.g. `http://<pc-local-ip>:<port>/scan/<sessionToken>` (see [Network_Session.md](./Network_Session.md) for why this needs HTTPS even on a local network).

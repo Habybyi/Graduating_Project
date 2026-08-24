@@ -23,14 +23,14 @@ Per the project decision: **sandbox now, real production API key later** (once t
 Both are configured via environment variables so switching from sandbox to production later is a config change, not a code change:
 
 ```env
-# packing/.env (currently empty — add these when the backend is scaffolded)
+# server/.env (created during the Phase 0 backend scaffold)
 SUPERFAKTURA_BASE_URL=https://sandbox.superfaktura.sk
 SUPERFAKTURA_EMAIL=
 SUPERFAKTURA_API_KEY=
 SUPERFAKTURA_COMPANY_ID=
 ```
 
-> ⚠️ `packing/.env` is currently **not** in `.gitignore`. Before any real credentials go in it, add `.env` to [`packing/.gitignore`](../../packing/.gitignore) — otherwise the API key gets committed to the repo.
+> ⚠️ Make sure `.env` is in `server/.gitignore` from the very first commit of the backend scaffold — a lesson learned from the discarded prototype, which shipped a `.env` file that wasn't ignored (see [System_Overview.md](./System_Overview.md)).
 
 ---
 

@@ -20,7 +20,7 @@ Which role can add products is intentionally the same as who can manage the rest
 
 ## 🌱 Bootstrapping the first account
 
-The very first `manager` account (used by the business owner) is created manually — a one-time setup step (e.g. a seed script or a setup route guarded by an environment secret), not a signup form. There's no public registration anywhere in the app — every other account is created by a manager from inside the dashboard, on purpose (matches the existing [LoginPage.jsx](../../packing/src/pages/LoginPage.jsx) comment: *"No registration option is included by design"*).
+The very first `manager` account (used by the business owner) is created manually — a one-time setup step (e.g. a seed script or a setup route guarded by an environment secret), not a signup form. There's no public registration anywhere in the app, on purpose — every other account is created by a manager from inside the dashboard.
 
 ---
 
@@ -34,7 +34,7 @@ The very first `manager` account (used by the business owner) is created manuall
 
 ## 🔁 Forgotten password
 
-No email server, no self-service reset flow (the [ResetPasswordPage.jsx](../../packing/src/pages/ResetPasswordPage.jsx) mock's "email a reset link" idea is **not** used for v1 — realistic for a small crew is a manager-driven reset instead):
+No email server, no self-service "email me a reset link" flow — **not** used for v1, realistic for a small crew is a manager-driven reset instead:
 
 1. Manager opens the user list in the dashboard, finds the driver, clicks "Reset password."
 2. A new temporary password is generated and shown to the manager to hand over (same mechanism as day-one onboarding).

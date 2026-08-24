@@ -30,7 +30,7 @@ Driver or manager account. See [Roles_And_Onboarding.md](./Roles_And_Onboarding.
 |---|---|---|
 | `id` | uuid/int | |
 | `username` | string | |
-| `passwordHash` | string | real auth, not yet wired into the app (see [Login_Auth.jsx](../../packing/src/scripts/Login_Auth.jsx)) |
+| `passwordHash` | string | real auth, to be built in Phase 1 (see [Roles_And_Onboarding.md](./Roles_And_Onboarding.md)) |
 | `role` | string (not a hardcoded 2-value enum) | `driver` \| `manager` today. Stored as a plain string, not a fixed enum type, so a future role (e.g. `production`) can be introduced later without a schema change — only the app's permission checks need updating |
 | `mustChangePassword` | bool | `true` when the account was just created or reset by a manager; the app forces a password-change screen before anything else until this is cleared |
 | `createdAt` | datetime | |

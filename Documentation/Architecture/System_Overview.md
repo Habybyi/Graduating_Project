@@ -11,11 +11,26 @@ A driver opens a PC dashboard, selects a customer, and starts a delivery note. A
 
 ---
 
+## 📁 Repository structure
+
+An earlier prototype (`packing/`) explored the login screens and the [neumorphic design tokens](./Design_Tokens.md), but was never committed — it's been discarded in favor of a clean start once real backend work began. The repo is now built as:
+
+```
+Graduating_Project/
+├── Documentation/     — everything in this folder
+├── Wireframes/         — low-fidelity flow mockups
+├── Design_Mockups/     — high-fidelity neumorphic mockups
+├── server/              — Node.js/Express backend (Phase 0+)
+└── web/                 — React/Vite frontend (Phase 0+, rebuilt using Design_Tokens.md)
+```
+
+---
+
 ## 🧩 Components
 
 | Component | Responsibility | Runs on |
 |---|---|---|
-| **PC Dashboard** (React/Vite, existing `packing/` app) | Login, customer selection, delivery note creation, QR display, final review, product/prototype management | Driver's PC, same LAN as the backend |
+| **PC Dashboard** (React/Vite, `web/`) | Login, customer selection, delivery note creation, QR display, final review, product/prototype management | Driver's PC, same LAN as the backend |
 | **Phone Capture App** (same React app, mobile-first routes) | Camera capture bound to a delivery session, shows AI match + confidence, lets the driver confirm/correct | Driver's phone, same WiFi |
 | **Backend API** (Node.js / Express) | Auth, sessions, customers, delivery notes, file upload handling, orchestrates the AI layer, talks to SuperFaktúra | Local server (same machine as PC dashboard, or a small local server on the LAN) |
 | **AI Recognition Layer** | Turns a photo into an embedding vector and matches it against stored product prototypes | Called by the backend — see [AI_Recognition.md](./AI_Recognition.md) for the exact approach (still being finalized) |
@@ -42,9 +57,9 @@ flowchart LR
 
 | Layer | Choice | Why |
 |---|---|---|
-| Frontend | React 19 + Vite (already scaffolded in `packing/`) | Already in place, one codebase serves both PC and phone views via responsive routes |
-| Backend | Node.js + Express | Same language as the frontend, one stack, easy JSON APIs, easy to call external AI/embedding APIs over HTTP |
-| Auth | JWT (groundwork already exists in [Login_Auth.jsx](../../packing/src/scripts/Login_Auth.jsx), not yet wired into the app) | Simple stateless auth for driver/manager accounts |
+| Frontend | React 19 + Vite (`web/`, scaffolded fresh in Phase 0) | One codebase serves both PC and phone views via responsive routes; rebuilt clean using the [design tokens](./Design_Tokens.md) preserved from the discarded prototype |
+| Backend | Node.js + Express (`server/`) | Same language as the frontend, one stack, easy JSON APIs, easy to call external AI/embedding APIs over HTTP |
+| Auth | JWT, built in Phase 1 (see [Roles_And_Onboarding.md](./Roles_And_Onboarding.md)) | Simple stateless auth for driver/manager accounts |
 | Database | SQLite (dev) → Postgres (production, once real deployment is planned) | SQLite needs zero setup for a school project demo; schema is portable to Postgres later |
 | AI embeddings | **Open decision** — see [AI_Recognition.md](./AI_Recognition.md) | To be finalized together before coding starts |
 | Invoicing | SuperFaktúra REST API (sandbox now, production key later) | Real Slovak invoicing service the client company already/will use |
