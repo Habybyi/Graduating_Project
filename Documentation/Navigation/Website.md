@@ -49,8 +49,11 @@
 
 #### ➕ Adding a new product
 
-1. Go to **Database / Packages** and click **Add product**.
-2. Give it a name (e.g. "Venček", "Čokoládová torta").
-3. Upload at least 5 reference photos, following the [photo guide](../Tutorials/How_to_create_photos.md) — different angles, lighting, and background for each.
-4. Submit. The system processes each photo in the background and learns from it.
-5. Your uploaded photos are **not kept** after processing — only what the AI learned from them stays. Once processing finishes, the product is ready to be recognized during deliveries.
+1. Go to **Database / Packages** and click **Add package**.
+2. Pick an existing product or create a new one (name + whether it's sold as a `whole` cake or `piece`-by-piece).
+3. **Choose the package type — this matters, pick carefully:**
+   - **Training package** — teaches the AI. Photos are processed, then deleted (after a short safety window).
+   - **Test package** — kept permanently, used only to measure accuracy (see [Test_Plan.md](../Testing/Test_Plan.md)). Never teaches the AI anything.
+4. Upload at least 5 photos (training) or 2–3 photos (test), following the [photo guide](../Tutorials/How_to_create_photos.md) — different angles, lighting, and background for each.
+5. Submit. You'll see a progress count while each photo is processed, then a confirmation (e.g. "5/5 processed for Venček ✅").
+6. For a training package, the uploaded photos are **not kept** after processing — only what the AI learned from them stays. Once processing finishes, the product is ready to be recognized during deliveries. Test package photos stay in the system on purpose.
