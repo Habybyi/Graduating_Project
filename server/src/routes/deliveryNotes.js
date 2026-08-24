@@ -42,9 +42,13 @@ const getItemsStmt = db.prepare(`
 const insertNoteStmt = db.prepare(
   "INSERT INTO delivery_notes (customer_id, created_by_user_id, status) VALUES (?, ?, 'draft')"
 );
-const insertItemStmt = db.prepare(
-  "INSERT INTO delivery_note_items (delivery_note_id, product_id, quantity) VALUES (?, ?, ?)"
-);
+// Adding a product that's already on this delivery note merges the
+// quantity into the existing row instead of creating a duplicate.
+const upsertItemStmt = db.prepare(`
+  INSERT INTO delivery_note_items (delivery_note_id, product_id, quantity)
+  VALUES (?, ?, ?)
+  ON CONFLICT(delivery_note_id, product_id) DO UPDATE SET quantity = quantity + excluded.quantity
+`);
 const deleteItemStmt = db.prepare("DELETE FROM delivery_note_items WHERE id = ? AND delivery_note_id = ?");
 const updateStatusStmt = db.prepare("UPDATE delivery_notes SET status = ? WHERE id = ?");
 
@@ -95,7 +99,7 @@ router.post("/:id/items", (req, res) => {
     return res.status(400).json({ error: "Zadaj produkt a množstvo (aspoň 1)." });
   }
 
-  insertItemStmt.run(note.id, productId, quantity);
+  upsertItemStmt.run(note.id, productId, quantity);
   res.status(201).json(loadNoteWithItems(note.id));
 });
 

@@ -75,6 +75,12 @@ export const api = {
     request(`/delivery-notes/${noteId}/status`, { method: "PATCH", token, body: { status } }),
   createSession: (token, noteId) => request(`/sessions/for-note/${noteId}`, { method: "POST", token }),
   getNetworkInfo: () => request("/network-info"),
+  getActivityLog: (token, filters = {}) => {
+    const params = new URLSearchParams(Object.entries(filters).filter(([, v]) => v));
+    const qs = params.toString();
+    return request(`/activity-log${qs ? `?${qs}` : ""}`, { token });
+  },
+  getActivityLogFilters: (token) => request("/activity-log/filters", { token }),
   getScanSession: (sessionToken) => request(`/sessions/${sessionToken}`),
   addScanItem: (sessionToken, productId, quantity, aiConfidence, wasManuallyCorrected) =>
     request(`/sessions/${sessionToken}/items`, {

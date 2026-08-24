@@ -122,8 +122,8 @@ export const ProductDetailPage = () => {
         )}
 
         <p className={styles.subtitle} style={{ fontSize: "0.75rem", marginTop: "1rem", textAlign: "left" }}>
-          Fotky sa spracúvajú cez Gemini AI (skutočný embedding, nie test). Rozpoznávanie počas dodávky (Fáza 5) ešte
-          nie je zapojené — zatiaľ sa dá len naučiť a otestovať uloženie.
+          Fotky sa spracúvajú cez Gemini AI (skutočný embedding). Rozpoznávanie na telefóne už funguje pre jeden
+          produkt na fotku — viacero kusov na jednej fotke (napr. zmiešaná debna) je stále otvorená úloha.
         </p>
       </div>
     </AppShell>

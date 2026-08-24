@@ -18,7 +18,7 @@ const NAV_ITEMS = [
   { to: "/products", label: "Databáza produktov", icon: FiPackage, enabled: true },
   { to: "/customers", label: "Zákazníci", icon: FiTruck, enabled: true },
   { to: "/users", label: "Používatelia", icon: FiUsers, enabled: true, requireRole: "manager" },
-  { to: "/dashboard", label: "Aktivita (log)", icon: FiActivity, enabled: false, requireRole: "manager" },
+  { to: "/activity-log", label: "Aktivita (log)", icon: FiActivity, enabled: true, requireRole: "manager" },
 ];
 
 // Shared sidebar shell for every logged-in screen. Most nav items are

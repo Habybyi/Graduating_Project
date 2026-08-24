@@ -32,9 +32,17 @@ const listPrototypesStmt = db.prepare(`
   JOIN products p ON p.id = pp.product_id
   WHERE p.is_active = 1
 `);
-const insertItemStmt = db.prepare(`
+// Adding a product already on this note merges quantity into the existing
+// row (see the UNIQUE constraint on delivery_note_items). The new
+// confidence/correction values win on merge — they describe the photo
+// just taken, which is more relevant than a stale earlier one.
+const upsertItemStmt = db.prepare(`
   INSERT INTO delivery_note_items (delivery_note_id, product_id, quantity, ai_confidence, was_manually_corrected)
   VALUES (?, ?, ?, ?, ?)
+  ON CONFLICT(delivery_note_id, product_id) DO UPDATE SET
+    quantity = quantity + excluded.quantity,
+    ai_confidence = excluded.ai_confidence,
+    was_manually_corrected = was_manually_corrected OR excluded.was_manually_corrected
 `);
 const expireSessionStmt = db.prepare("UPDATE delivery_sessions SET status = 'expired' WHERE id = ?");
 
@@ -127,7 +135,7 @@ router.post("/:token/items", (req, res) => {
     return res.status(400).json({ error: "Zadaj produkt a množstvo." });
   }
 
-  insertItemStmt.run(
+  upsertItemStmt.run(
     session.delivery_note_id,
     productId,
     quantity,

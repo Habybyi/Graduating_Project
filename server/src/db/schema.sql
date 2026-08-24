@@ -70,7 +70,8 @@ CREATE TABLE IF NOT EXISTS delivery_note_items (
   quantity               INTEGER NOT NULL,
   ai_confidence          REAL,   -- nullable: null if entered fully manually
   was_manually_corrected INTEGER NOT NULL DEFAULT 0,
-  created_at             TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at             TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(delivery_note_id, product_id) -- adding the same product again merges quantity instead of a duplicate row
 );
 
 CREATE TABLE IF NOT EXISTS activity_log (

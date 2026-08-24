@@ -9,6 +9,7 @@ import productsRoutes from "./routes/products.js";
 import deliveryNotesRoutes from "./routes/deliveryNotes.js";
 import sessionsRoutes from "./routes/sessions.js";
 import networkRoutes from "./routes/network.js";
+import activityLogRoutes from "./routes/activityLog.js";
 
 if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET is not set — check server/.env (see .env.example).");
@@ -30,6 +31,7 @@ app.use("/products", productsRoutes);
 app.use("/delivery-notes", deliveryNotesRoutes);
 app.use("/sessions", sessionsRoutes);
 app.use("/network-info", networkRoutes);
+app.use("/activity-log", activityLogRoutes);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
