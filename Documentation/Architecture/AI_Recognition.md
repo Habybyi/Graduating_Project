@@ -80,18 +80,23 @@ This means the "1 whole cake" outcome is a **rollup performed after per-slice cl
 
 ---
 
-## 🔓 Open technical decision: localization model
+## ✅ Resolved: localization — Gemini bounding-box detection
 
-Not chosen yet. This is a new decision introduced by requiring per-instance/per-slice detection instead of one embedding per photo. Realistic candidates:
+**Decided 2026-08-24**, same day as the embedding decision — turned out to be the same vendor. Gemini's vision model returns bounding boxes via a prompted JSON request (`box_2d: [ymin,xmin,ymax,xmax]` normalized 0-1000, well-documented Gemini capability). Implemented in [`server/src/services/localization.js`](../../server/src/services/localization.js), model `gemini-flash-latest`.
 
-| Option | How it works | Trade-off |
-|---|---|---|
-| **Class-agnostic segmentation model** (e.g. Segment Anything / SAM, via a hosted API) | Finds every distinct visual region in an image without needing to know what any of them are — never retrained when a product is added | Most robust to messy real-world crate photos and subtle slice boundaries (cut lines on a cake are a faint visual cue); adds an external API call and cost per photo |
-| **Classical image processing** (e.g. contour/blob detection) | No AI model — pure image processing (edges, contours, thresholding) to find distinct regions | Free, fast, no external dependency; only reliable if crate photos have a fairly controlled, plain background and decent lighting (worth prototyping first since the bakery kitchen setup is likely to actually offer that) |
+**Why this won over SAM/classical CV:** same `GEMINI_API_KEY` already in use for embeddings — one vendor for the whole AI layer instead of three separate moving parts. No new account, no local CV tuning against lighting/background conditions we hadn't tested yet.
 
-**Recommendation:** prototype the classical approach first against real bakery photos (cheap to try, no API cost) since kitchen crates are likely photographed against a plain, controlled background; fall back to a hosted segmentation model if it's too unreliable on real photos (especially for spotting faint cut lines on a uniformly-glazed cake). Final call: TBD, needs real sample photos to test against.
+**Verified empirically before committing**, on two synthetic test photos (generated with Gemini image-gen, since no real bakery photos exist yet):
+- A crate with 3 ring pastries + 1 cake → found exactly 4 well-separated boxes, correctly labeled.
+- A cake sliced into 8 wedges, 4 poppyseed / 4 raspberry → found all 8 slices as separate regions, split evenly by topping.
 
-**Worth trying first, given the embedding decision above:** Gemini's vision model can also return bounding boxes for objects in an image via a prompted request (no separate account/API needed — same `GEMINI_API_KEY`). If it's reliable enough on real crate photos, it would unify localization and classification onto one vendor instead of three moving parts (classical CV / SAM / embeddings). Untested so far — this is a lead for Phase 5, not a decision yet.
+**Full pipeline tested end-to-end** (localize → crop each region via `sharp` → embed each crop → classify → aggregate per the counting rules below):
+- Crate photo (3 venčeky + 1 torta, trained on crops from the same synthetic photo) → correctly aggregated to **3× Venček, 1× Čokoládová torta**, confidence 0.96–0.98.
+- Split-cake photo (trained "Maková torta" / "Malinová torta" as separate products) → correctly aggregated to **4× Maková torta, 4× Malinová torta** — the exact scenario these counting rules were designed around, verified not to collapse into one unit.
+
+**Known limitation:** ~20 seconds for a 4-item photo (one localization call + one embedding call per detected region, run sequentially). Fine for a demo/defense; worth parallelizing the per-region embedding calls (`Promise.all`) before real-world use if a 20-crate delivery would otherwise take minutes.
+
+**Caveat on all of the above:** every test so far uses Gemini-*generated* synthetic photos, not real bakery photos from the Samsung J5. Accuracy on real reference photos (worse lighting, real camera optics, actual product variation) is still unverified — this needs re-testing once real photos exist, per [How_to_create_photos.md](../Tutorials/How_to_create_photos.md).
 
 ## ✅ Resolved: embedding model — Gemini multimodal embeddings
 

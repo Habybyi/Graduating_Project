@@ -1,29 +1,33 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { FiCheckCircle, FiPlus, FiCamera, FiAlertTriangle } from "react-icons/fi";
+import { FiCheckCircle, FiPlus, FiCamera, FiAlertTriangle, FiTrash2 } from "react-icons/fi";
 import { api } from "../api/client";
 import styles from "../styles/neumorphic.module.css";
 
 // Public phone-facing page — no login, the session token in the URL is the
 // authorization (see Documentation/Architecture/Network_Session.md).
 //
-// Recognition is single-item-per-photo (see
-// Documentation/Architecture/AI_Recognition.md — localizing multiple items
-// within one photo is still an open decision, not implemented here). The
-// driver can also always skip the photo and pick a product manually.
+// Primary flow: photograph the whole crate at once, AI localizes every
+// item, classifies each, and aggregates per the piece/whole counting rules
+// (see Documentation/Architecture/AI_Recognition.md). Driver reviews the
+// resulting list — matching quantities, adjusts if needed — and confirms
+// once. A manual single-product dropdown stays available below as a
+// fallback for anything the AI missed or got wrong.
 export const ScanPage = () => {
   const { token } = useParams();
   const [sessionData, setSessionData] = useState(null);
   const [error, setError] = useState("");
-  const [productId, setProductId] = useState("");
-  const [quantity, setQuantity] = useState(1);
-  const [addedCount, setAddedCount] = useState(0);
 
   const [photoPreview, setPhotoPreview] = useState(null);
   const [recognizing, setRecognizing] = useState(false);
-  const [recognition, setRecognition] = useState(null); // { productName, confidence, confident }
-  const [suggestedProductId, setSuggestedProductId] = useState(null);
+  const [reviewItems, setReviewItems] = useState(null); // [{ productId, productName, quantity, confidence }]
+  const [unmatchedCount, setUnmatchedCount] = useState(0);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmedBatches, setConfirmedBatches] = useState(0);
   const fileInputRef = useRef(null);
+
+  const [manualProductId, setManualProductId] = useState("");
+  const [manualQuantity, setManualQuantity] = useState(1);
 
   useEffect(() => {
     api
@@ -37,18 +41,13 @@ export const ScanPage = () => {
     if (!file) return;
 
     setError("");
-    setRecognition(null);
+    setReviewItems(null);
     setPhotoPreview(URL.createObjectURL(file));
     setRecognizing(true);
     try {
-      const result = await api.recognizePhoto(token, file);
-      setRecognition(result);
-      if (result.match) {
-        setProductId(String(result.match.productId));
-        setSuggestedProductId(result.match.productId);
-      } else {
-        setSuggestedProductId(null);
-      }
+      const result = await api.recognizePhotoMulti(token, file);
+      setReviewItems(result.aggregated);
+      setUnmatchedCount(result.unmatchedCount || 0);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -56,29 +55,44 @@ export const ScanPage = () => {
     }
   };
 
-  const handleAdd = async (e) => {
+  const updateReviewQuantity = (productId, quantity) => {
+    setReviewItems((items) => items.map((it) => (it.productId === productId ? { ...it, quantity } : it)));
+  };
+
+  const removeReviewItem = (productId) => {
+    setReviewItems((items) => items.filter((it) => it.productId !== productId));
+  };
+
+  const handleConfirmList = async () => {
+    setError("");
+    setConfirming(true);
+    try {
+      for (const item of reviewItems) {
+        await api.addScanItem(token, item.productId, Number(item.quantity), item.confidence, false);
+      }
+      setConfirmedBatches((c) => c + 1);
+      setReviewItems(null);
+      setPhotoPreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  const handleManualAdd = async (e) => {
     e.preventDefault();
     setError("");
-    if (!productId) {
+    if (!manualProductId) {
       setError("Vyber produkt.");
       return;
     }
     try {
-      const wasManuallyCorrected = suggestedProductId !== null && Number(productId) !== suggestedProductId;
-      await api.addScanItem(
-        token,
-        Number(productId),
-        Number(quantity),
-        recognition?.confidence ?? null,
-        wasManuallyCorrected
-      );
-      setAddedCount((c) => c + 1);
-      setProductId("");
-      setQuantity(1);
-      setPhotoPreview(null);
-      setRecognition(null);
-      setSuggestedProductId(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      await api.addScanItem(token, Number(manualProductId), Number(manualQuantity), null, false);
+      setConfirmedBatches((c) => c + 1);
+      setManualProductId("");
+      setManualQuantity(1);
     } catch (err) {
       setError(err.message);
     }
@@ -109,11 +123,11 @@ export const ScanPage = () => {
       <div className={styles.card}>
         <h1 className={styles.title}>{sessionData.customerName}</h1>
         <p className={styles.subtitle} style={{ marginBottom: "1.5rem" }}>
-          Odfoť produkt, AI navrhne, čo to je — alebo vyber ručne.
+          Odfoť celú debnu naraz — AI nájde a spočíta všetky kusy.
         </p>
 
         <label className={styles.primaryButton} style={{ marginBottom: "1.25rem", cursor: "pointer" }}>
-          <FiCamera /> {photoPreview ? "Odfotiť znova" : "Odfotiť produkt"}
+          <FiCamera /> {photoPreview ? "Odfotiť znova" : "Odfotiť debnu"}
           <input
             ref={fileInputRef}
             type="file"
@@ -128,35 +142,81 @@ export const ScanPage = () => {
           <div style={{ textAlign: "center", marginBottom: "1.25rem" }}>
             <img
               src={photoPreview}
-              alt="Odfotený produkt"
+              alt="Odfotená debna"
               style={{ maxWidth: "160px", borderRadius: "16px", marginBottom: "0.75rem" }}
             />
-            {recognizing && <p className={styles.subtitle}>Rozpoznávam…</p>}
-            {recognition?.match && (
-              <div
-                className={styles.calloutBox}
-                style={{
-                  background: recognition.confident ? "rgba(79, 125, 243, 0.1)" : "rgba(226, 72, 58, 0.08)",
-                  borderColor: recognition.confident ? "rgba(79, 125, 243, 0.3)" : "rgba(226, 72, 58, 0.3)",
-                }}
-              >
-                {recognition.confident ? <FiCheckCircle /> : <FiAlertTriangle />} AI si myslí:{" "}
-                <strong>{recognition.match.productName}</strong> ({Math.round(recognition.confidence * 100)}%)
-                {!recognition.confident && " — over si to, istota je nízka"}
+            {recognizing && <p className={styles.subtitle}>Rozpoznávam (môže trvať do 20 sekúnd)…</p>}
+          </div>
+        )}
+
+        {reviewItems && (
+          <div style={{ marginBottom: "1.25rem" }}>
+            {reviewItems.length === 0 && (
+              <div className={styles.calloutBox}>
+                <FiAlertTriangle /> Nič sa nenašlo. Skús inú fotku, alebo pridaj ručne nižšie.
               </div>
             )}
-            {recognition && !recognition.match && (
-              <div className={styles.calloutBox}>
-                <FiAlertTriangle /> AI nevie, čo to je (žiadne naučené produkty). Vyber ručne.
+            {reviewItems.map((item) => (
+              <div
+                key={item.productId}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.6rem",
+                  padding: "0.6rem 0",
+                  borderBottom: "1px solid var(--neu-bg-dark)",
+                }}
+              >
+                {item.confidence >= 0.7 ? (
+                  <FiCheckCircle color="var(--neu-accent)" />
+                ) : (
+                  <FiAlertTriangle color="var(--neu-error)" />
+                )}
+                <span style={{ flex: 1, color: "var(--neu-text)" }}>{item.productName}</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={item.quantity}
+                  onChange={(e) => updateReviewQuantity(item.productId, e.target.value)}
+                  style={{ width: "60px", padding: "0.3rem" }}
+                />
+                <span style={{ fontSize: "0.75rem", color: "var(--neu-text-muted)" }}>
+                  {Math.round(item.confidence * 100)}%
+                </span>
+                <button type="button" className={styles.secondaryButton} onClick={() => removeReviewItem(item.productId)}>
+                  <FiTrash2 />
+                </button>
               </div>
+            ))}
+            {unmatchedCount > 0 && (
+              <p className={styles.subtitle} style={{ fontSize: "0.8rem", marginTop: "0.5rem" }}>
+                <FiAlertTriangle style={{ verticalAlign: "middle" }} /> {unmatchedCount}{" "}
+                {unmatchedCount === 1 ? "položka" : "položky"} s nízkou istotou vynechaná — pridaj ručne, ak treba.
+              </p>
+            )}
+            {reviewItems.length > 0 && (
+              <button
+                type="button"
+                className={styles.primaryButton}
+                style={{ marginTop: "1rem" }}
+                onClick={handleConfirmList}
+                disabled={confirming}
+              >
+                <FiCheckCircle /> {confirming ? "Ukladám…" : "Potvrdiť zoznam"}
+              </button>
             )}
           </div>
         )}
 
-        <form onSubmit={handleAdd} className={styles.form}>
+        {error && <div className={styles.errorMessage}>{error}</div>}
+
+        <p className={styles.subtitle} style={{ fontSize: "0.8rem", marginTop: "1.5rem", marginBottom: "0.5rem" }}>
+          Alebo pridaj ručne:
+        </p>
+        <form onSubmit={handleManualAdd} className={styles.form}>
           <select
-            value={productId}
-            onChange={(e) => setProductId(e.target.value)}
+            value={manualProductId}
+            onChange={(e) => setManualProductId(e.target.value)}
             className={styles.inputWrapper}
             style={{ border: "none", color: "var(--neu-text)" }}
           >
@@ -167,27 +227,23 @@ export const ScanPage = () => {
               </option>
             ))}
           </select>
-
           <div className={styles.inputWrapper}>
             <input
               type="number"
               min={1}
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
+              value={manualQuantity}
+              onChange={(e) => setManualQuantity(e.target.value)}
               className={styles.input}
             />
           </div>
-
-          {error && <div className={styles.errorMessage}>{error}</div>}
-
-          <button type="submit" className={styles.primaryButton}>
-            <FiPlus /> Pridať položku
+          <button type="submit" className={styles.secondaryButton} style={{ justifyContent: "center" }}>
+            <FiPlus /> Pridať ručne
           </button>
         </form>
 
-        {addedCount > 0 && (
+        {confirmedBatches > 0 && (
           <p className={styles.subtitle} style={{ marginTop: "1.25rem", color: "var(--neu-accent-dark)" }}>
-            <FiCheckCircle style={{ verticalAlign: "middle" }} /> Pridaných položiek: {addedCount}
+            <FiCheckCircle style={{ verticalAlign: "middle" }} /> Uložené: {confirmedBatches}×
           </p>
         )}
       </div>

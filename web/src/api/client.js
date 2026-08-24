@@ -92,4 +92,9 @@ export const api = {
     formData.append("photo", file);
     return requestForm(`/sessions/${sessionToken}/recognize`, { formData });
   },
+  recognizePhotoMulti: (sessionToken, file) => {
+    const formData = new FormData();
+    formData.append("photo", file);
+    return requestForm(`/sessions/${sessionToken}/recognize-multi`, { formData });
+  },
 };

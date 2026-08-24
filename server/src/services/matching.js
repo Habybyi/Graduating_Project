@@ -1,12 +1,12 @@
-// Cosine similarity between an uploaded photo's embedding and every stored
-// ProductPrototype — "closest of any prototype across all products", per
-// the leaning documented in AI_Recognition.md (multiple prototypes per
-// product, not a single average).
+// Cosine similarity between an embedding (a whole photo, or one cropped
+// region) and every stored ProductPrototype — "closest of any prototype
+// across all products", per the leaning documented in AI_Recognition.md
+// (multiple prototypes per product, not a single average).
 //
-// This is single-item matching only: one photo -> one best-guess product.
-// Localizing multiple items within one photo (mixed crates, split cakes)
-// is still an open decision (see AI_Recognition.md) and not implemented
-// here — see Documentation/Architecture/AI_Recognition.md.
+// Used two ways: directly on a whole photo for single-item recognition
+// (routes/sessions.js /recognize), and per-crop after localization for
+// multi-item recognition (/recognize-multi, see localization.js and
+// aggregation.js for the rest of that pipeline).
 
 function cosineSimilarity(a, b) {
   let dot = 0;

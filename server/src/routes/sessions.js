@@ -1,10 +1,29 @@
 import { Router } from "express";
 import crypto from "node:crypto";
 import multer from "multer";
+import sharp from "sharp";
 import { db } from "../db/connection.js";
 import { requireAuth } from "../middleware/auth.js";
 import { computeEmbedding } from "../services/embeddings.js";
 import { findBestMatch } from "../services/matching.js";
+import { detectRegions } from "../services/localization.js";
+import { aggregateRegions } from "../services/aggregation.js";
+
+// Crops one detected region out of the full photo. box_2d is normalized
+// 0-1000 [ymin, xmin, ymax, xmax] (Gemini's bounding-box convention) — see
+// Documentation/Architecture/AI_Recognition.md.
+async function cropRegion(buffer, box_2d) {
+  const image = sharp(buffer);
+  const { width, height } = await image.metadata();
+  const [ymin, xmin, ymax, xmax] = box_2d;
+
+  const left = Math.max(0, Math.round((xmin / 1000) * width));
+  const top = Math.max(0, Math.round((ymin / 1000) * height));
+  const cropWidth = Math.min(width - left, Math.max(1, Math.round(((xmax - xmin) / 1000) * width)));
+  const cropHeight = Math.min(height - top, Math.max(1, Math.round(((ymax - ymin) / 1000) * height)));
+
+  return image.extract({ left, top, width: cropWidth, height: cropHeight }).toBuffer();
+}
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
@@ -124,6 +143,68 @@ router.post("/:token/recognize", upload.single("photo"), async (req, res) => {
     confidence: best.similarity,
     confident: best.similarity >= CONFIDENCE_THRESHOLD,
   });
+});
+
+// Multi-item photo recognition — the actual two-stage pipeline from
+// AI_Recognition.md: localize every distinct item/slice, classify each
+// crop independently, then apply the piece/whole counting rules. Nothing
+// is saved here either; the driver reviews the aggregated suggestion and
+// confirms via /:token/items (looped client-side), same as the
+// single-item path. No crop or the original photo is ever written to disk.
+router.post("/:token/recognize-multi", upload.single("photo"), async (req, res) => {
+  const { error } = loadValidSession(req.params.token);
+  if (error) return res.status(410).json({ error });
+  if (!req.file) {
+    return res.status(400).json({ error: "Chýba fotka." });
+  }
+
+  const prototypes = listPrototypesStmt.all().map((p) => ({
+    ...p,
+    embeddingVector: JSON.parse(p.embeddingVector),
+  }));
+  if (prototypes.length === 0) {
+    return res.json({ regions: [], aggregated: [] });
+  }
+
+  let boxes;
+  try {
+    boxes = await detectRegions(req.file.buffer, req.file.mimetype);
+  } catch (err) {
+    return res.status(422).json({ error: `Lokalizácia zlyhala: ${err.message}` });
+  }
+
+  const regions = [];
+  for (const box of boxes) {
+    let crop;
+    try {
+      crop = await cropRegion(req.file.buffer, box.box_2d);
+    } catch {
+      continue; // malformed box from the model — skip rather than fail the whole photo
+    }
+
+    let embedding;
+    try {
+      embedding = await computeEmbedding(crop, "image/jpeg");
+    } catch {
+      continue;
+    }
+
+    const best = findBestMatch(embedding, prototypes);
+    regions.push({
+      label: box.label,
+      productId: best.productId,
+      productName: best.productName,
+      unitType: best.unitType,
+      confidence: best.similarity,
+      confident: best.similarity >= CONFIDENCE_THRESHOLD,
+    });
+  }
+
+  const confidentRegions = regions.filter((r) => r.confident);
+  const aggregated = aggregateRegions(confidentRegions);
+  const unmatchedCount = regions.length - confidentRegions.length;
+
+  res.json({ regions, aggregated, unmatchedCount });
 });
 
 router.post("/:token/items", (req, res) => {
