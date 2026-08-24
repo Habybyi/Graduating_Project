@@ -39,6 +39,8 @@ const insertPrototypeStmt = db.prepare(
 const insertTestImageStmt = db.prepare(
   "INSERT INTO test_images (product_id, image_ref, embedding_vector) VALUES (?, ?, ?)"
 );
+const updateProductStmt = db.prepare("UPDATE products SET name = ?, unit_type = ? WHERE id = ?");
+const deactivateProductStmt = db.prepare("UPDATE products SET is_active = 0 WHERE id = ?");
 
 router.get("/", (req, res) => {
   res.json(listProductsStmt.all());
@@ -61,6 +63,51 @@ router.post("/", (req, res) => {
   });
 
   res.status(201).json({ id: productId, name, unitType, isActive: true });
+});
+
+router.patch("/:id", (req, res) => {
+  const product = findProductStmt.get(req.params.id);
+  if (!product) {
+    return res.status(404).json({ error: "Produkt neexistuje." });
+  }
+  const { name, unitType } = req.body || {};
+  if (!name || !["piece", "whole"].includes(unitType)) {
+    return res.status(400).json({ error: "Zadaj názov a typ ('piece' alebo 'whole')." });
+  }
+
+  updateProductStmt.run(name, unitType, product.id);
+
+  logActivity({
+    actingUser: req.user,
+    action: "product.updated",
+    entityType: "Product",
+    entityId: product.id,
+    summary: `${req.user.username} upravil produkt '${name}'`,
+  });
+
+  res.json({ id: product.id, name, unitType });
+});
+
+// Soft delete — products carry prototypes/delivery-note-item history that
+// must survive (see Data_Model.md), so this deactivates rather than
+// deletes. Deactivated products drop out of every listing/matching query.
+router.delete("/:id", (req, res) => {
+  const product = findProductStmt.get(req.params.id);
+  if (!product) {
+    return res.status(404).json({ error: "Produkt neexistuje." });
+  }
+
+  deactivateProductStmt.run(product.id);
+
+  logActivity({
+    actingUser: req.user,
+    action: "product.deactivated",
+    entityType: "Product",
+    entityId: product.id,
+    summary: `${req.user.username} deaktivoval produkt '${product.name}'`,
+  });
+
+  res.json({ status: "ok" });
 });
 
 router.get("/:id", (req, res) => {

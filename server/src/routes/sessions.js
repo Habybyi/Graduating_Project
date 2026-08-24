@@ -1,11 +1,16 @@
 import { Router } from "express";
 import crypto from "node:crypto";
+import multer from "multer";
 import { db } from "../db/connection.js";
 import { requireAuth } from "../middleware/auth.js";
+import { computeEmbedding } from "../services/embeddings.js";
+import { findBestMatch } from "../services/matching.js";
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
 const SESSION_TTL_MINUTES = 30; // see Documentation/Architecture/Network_Session.md
+const CONFIDENCE_THRESHOLD = 0.7; // tuning parameter, see AI_Recognition.md — set empirically once real prototypes/test images exist
 
 const insertSessionStmt = db.prepare(`
   INSERT INTO delivery_sessions (token, delivery_note_id, status, expires_at)
@@ -20,9 +25,17 @@ const findNoteStmt = db.prepare(`
 const listProductsStmt = db.prepare(
   "SELECT id, name, unit_type AS unitType FROM products WHERE is_active = 1 ORDER BY name"
 );
-const insertItemStmt = db.prepare(
-  "INSERT INTO delivery_note_items (delivery_note_id, product_id, quantity) VALUES (?, ?, ?)"
-);
+const listPrototypesStmt = db.prepare(`
+  SELECT pp.product_id AS productId, pp.embedding_vector AS embeddingVector,
+         p.name AS productName, p.unit_type AS unitType
+  FROM product_prototypes pp
+  JOIN products p ON p.id = pp.product_id
+  WHERE p.is_active = 1
+`);
+const insertItemStmt = db.prepare(`
+  INSERT INTO delivery_note_items (delivery_note_id, product_id, quantity, ai_confidence, was_manually_corrected)
+  VALUES (?, ?, ?, ?, ?)
+`);
 const expireSessionStmt = db.prepare("UPDATE delivery_sessions SET status = 'expired' WHERE id = ?");
 
 function loadValidSession(token) {
@@ -65,16 +78,62 @@ router.get("/:token", (req, res) => {
   });
 });
 
+// Single-item photo recognition — see Documentation/Architecture/AI_Recognition.md.
+// Does NOT save anything; just returns a suggestion for the driver to
+// confirm (with quantity) via POST /:token/items below. The photo itself
+// is never written to disk (memoryStorage) and is discarded once this
+// request finishes, matching the image-lifecycle rule for delivery photos.
+router.post("/:token/recognize", upload.single("photo"), async (req, res) => {
+  const { error } = loadValidSession(req.params.token);
+  if (error) return res.status(410).json({ error });
+  if (!req.file) {
+    return res.status(400).json({ error: "Chýba fotka." });
+  }
+
+  let embedding;
+  try {
+    embedding = await computeEmbedding(req.file.buffer, req.file.mimetype);
+  } catch (err) {
+    return res.status(422).json({ error: err.message });
+  }
+
+  const prototypes = listPrototypesStmt.all().map((p) => ({
+    ...p,
+    embeddingVector: JSON.parse(p.embeddingVector),
+  }));
+
+  if (prototypes.length === 0) {
+    return res.json({ match: null, confidence: 0 });
+  }
+
+  const best = findBestMatch(embedding, prototypes);
+  res.json({
+    match: {
+      productId: best.productId,
+      productName: best.productName,
+      unitType: best.unitType,
+    },
+    confidence: best.similarity,
+    confident: best.similarity >= CONFIDENCE_THRESHOLD,
+  });
+});
+
 router.post("/:token/items", (req, res) => {
   const { session, error } = loadValidSession(req.params.token);
   if (error) return res.status(410).json({ error });
 
-  const { productId, quantity } = req.body || {};
+  const { productId, quantity, aiConfidence, wasManuallyCorrected } = req.body || {};
   if (!productId || !quantity || quantity < 1) {
     return res.status(400).json({ error: "Zadaj produkt a množstvo." });
   }
 
-  insertItemStmt.run(session.delivery_note_id, productId, quantity);
+  insertItemStmt.run(
+    session.delivery_note_id,
+    productId,
+    quantity,
+    typeof aiConfidence === "number" ? aiConfidence : null,
+    wasManuallyCorrected ? 1 : 0
+  );
   res.status(201).json({ status: "ok" });
 });
 

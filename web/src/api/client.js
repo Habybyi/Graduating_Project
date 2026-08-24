@@ -47,9 +47,15 @@ export const api = {
   listCustomers: (token) => request("/customers", { token }),
   createCustomer: (token, name, address) =>
     request("/customers", { method: "POST", token, body: { name, address } }),
+  updateCustomer: (token, id, name, address) =>
+    request(`/customers/${id}`, { method: "PATCH", token, body: { name, address } }),
+  deleteCustomer: (token, id) => request(`/customers/${id}`, { method: "DELETE", token }),
   listProducts: (token) => request("/products", { token }),
   createProduct: (token, name, unitType) =>
     request("/products", { method: "POST", token, body: { name, unitType } }),
+  updateProduct: (token, id, name, unitType) =>
+    request(`/products/${id}`, { method: "PATCH", token, body: { name, unitType } }),
+  deleteProduct: (token, id) => request(`/products/${id}`, { method: "DELETE", token }),
   getProduct: (token, id) => request(`/products/${id}`, { token }),
   uploadPackage: (token, productId, type, files) => {
     const formData = new FormData();
@@ -70,6 +76,14 @@ export const api = {
   createSession: (token, noteId) => request(`/sessions/for-note/${noteId}`, { method: "POST", token }),
   getNetworkInfo: () => request("/network-info"),
   getScanSession: (sessionToken) => request(`/sessions/${sessionToken}`),
-  addScanItem: (sessionToken, productId, quantity) =>
-    request(`/sessions/${sessionToken}/items`, { method: "POST", body: { productId, quantity } }),
+  addScanItem: (sessionToken, productId, quantity, aiConfidence, wasManuallyCorrected) =>
+    request(`/sessions/${sessionToken}/items`, {
+      method: "POST",
+      body: { productId, quantity, aiConfidence, wasManuallyCorrected },
+    }),
+  recognizePhoto: (sessionToken, file) => {
+    const formData = new FormData();
+    formData.append("photo", file);
+    return requestForm(`/sessions/${sessionToken}/recognize`, { formData });
+  },
 };

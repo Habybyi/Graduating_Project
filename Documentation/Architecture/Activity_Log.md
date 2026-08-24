@@ -18,7 +18,11 @@ The manager (currently: the father running the bakery) needs to be able to answe
 | `action` | Logged when |
 |---|---|
 | `customer.created` | A new customer is added |
+| `customer.updated` | A customer's name/address is edited |
+| `customer.deleted` | A customer is removed |
 | `product.created` | A new product is added to the catalog |
+| `product.updated` | A product's name/unit type is edited |
+| `product.deactivated` | A product is removed from the catalog (soft delete — history is kept, see Data_Model.md) |
 | `product.reference_photos_uploaded` | Reference/training photos are uploaded for a product (count included) |
 | `delivery_note.created` | A driver starts a new delivery note for a customer |
 | `delivery_note.item_corrected` | A driver overrides an AI-suggested product/quantity on a line item |
