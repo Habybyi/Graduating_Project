@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { FiUploadCloud, FiCheckCircle } from "react-icons/fi";
+import { FiUploadCloud, FiCheckCircle, FiSmartphone } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api/client";
 import { AppShell } from "../components/AppShell";
+import { ProductQrPanel } from "../components/ProductQrPanel";
 import styles from "../styles/neumorphic.module.css";
+
+const MIN_TRAINING_PHOTOS = 5;
+const MIN_TEST_PHOTOS = 1;
 
 // Package upload UI — see Documentation/Navigation/Website.md ("Adding a
 // new product") and Documentation/Architecture/AI_Recognition.md.
@@ -18,6 +22,7 @@ export const ProductDetailPage = () => {
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+  const [showPhoneUpload, setShowPhoneUpload] = useState(false);
   const fileInputRef = useRef(null);
 
   const load = async () => {
@@ -34,8 +39,11 @@ export const ProductDetailPage = () => {
     setError("");
     setResult(null);
     const files = fileInputRef.current?.files;
-    if (!files || files.length === 0) {
-      setError("Vyber aspoň jednu fotku.");
+    const minRequired = packageType === "training" ? MIN_TRAINING_PHOTOS : MIN_TEST_PHOTOS;
+    if (!files || files.length < minRequired) {
+      setError(
+        `Vyber aspoň ${minRequired} ${minRequired === 1 ? "fotku" : "fotiek"} (vybraných ${files?.length || 0}).`
+      );
       return;
     }
 
@@ -98,7 +106,7 @@ export const ProductDetailPage = () => {
 
         <p className={styles.subtitle} style={{ textAlign: "left", fontSize: "0.82rem", marginBottom: "1rem" }}>
           {packageType === "training"
-            ? "Naučí AI tento produkt. Fotky sa po spracovaní nikam neukladajú — ostane z nich len naučený vektor."
+            ? `Naučí AI tento produkt. Potrebuješ aspoň ${MIN_TRAINING_PHOTOS} fotiek (kľudne aj viac). Fotky sa po spracovaní nikam neukladajú — ostane z nich len naučený vektor.`
             : "Fotky ostanú uložené natrvalo, používajú sa len na meranie presnosti (nikdy netrénujú AI)."}
         </p>
 
@@ -118,6 +126,21 @@ export const ProductDetailPage = () => {
           <div className={styles.calloutBox} style={{ marginTop: "1rem" }}>
             <FiCheckCircle style={{ verticalAlign: "middle" }} /> {result.processed}/{result.processed} fotiek
             spracovaných ({result.type === "training" ? "tréningový" : "testovací"} balíček).
+          </div>
+        )}
+
+        <button
+          type="button"
+          className={styles.secondaryButton}
+          style={{ marginTop: "1rem" }}
+          onClick={() => setShowPhoneUpload((v) => !v)}
+        >
+          <FiSmartphone /> {showPhoneUpload ? "Skryť QR kód" : "Pridať cez telefón"}
+        </button>
+
+        {showPhoneUpload && (
+          <div style={{ marginTop: "1rem" }}>
+            <ProductQrPanel productId={product.id} packageType={packageType} onSessionActive={load} />
           </div>
         )}
 

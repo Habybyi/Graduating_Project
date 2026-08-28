@@ -65,6 +65,20 @@ CREATE TABLE IF NOT EXISTS delivery_sessions (
   expires_at       TEXT NOT NULL
 );
 
+-- Phone handoff for adding product reference/test photos, mirrors
+-- delivery_sessions but scoped to one product + package type instead of a
+-- delivery note (see Documentation/Architecture/Network_Session.md).
+CREATE TABLE IF NOT EXISTS product_photo_sessions (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  token        TEXT NOT NULL UNIQUE,
+  product_id   INTEGER NOT NULL REFERENCES products(id),
+  package_type TEXT NOT NULL CHECK (package_type IN ('training', 'test')),
+  status       TEXT NOT NULL DEFAULT 'active'
+                 CHECK (status IN ('active', 'expired', 'completed')),
+  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at   TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS delivery_note_items (
   id                    INTEGER PRIMARY KEY AUTOINCREMENT,
   delivery_note_id      INTEGER NOT NULL REFERENCES delivery_notes(id),

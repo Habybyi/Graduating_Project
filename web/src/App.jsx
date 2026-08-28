@@ -11,6 +11,7 @@ import { ProductDetailPage } from "./pages/ProductDetailPage";
 import { DeliveryNotesPage } from "./pages/DeliveryNotesPage";
 import { DeliveryNoteDetailPage } from "./pages/DeliveryNoteDetailPage";
 import { ScanPage } from "./pages/ScanPage";
+import { ProductScanPage } from "./pages/ProductScanPage";
 import { ActivityLogPage } from "./pages/ActivityLogPage";
 
 export const App = () => {
@@ -23,6 +24,7 @@ export const App = () => {
 
           {/* Public — the session token in the URL is the authorization */}
           <Route path="/scan/:token" element={<ScanPage />} />
+          <Route path="/product-scan/:token" element={<ProductScanPage />} />
 
           <Route
             path="/change-password"

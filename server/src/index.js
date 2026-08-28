@@ -8,6 +8,7 @@ import customersRoutes from "./routes/customers.js";
 import productsRoutes from "./routes/products.js";
 import deliveryNotesRoutes from "./routes/deliveryNotes.js";
 import sessionsRoutes from "./routes/sessions.js";
+import productSessionsRoutes from "./routes/productSessions.js";
 import networkRoutes from "./routes/network.js";
 import activityLogRoutes from "./routes/activityLog.js";
 
@@ -30,6 +31,7 @@ app.use("/customers", customersRoutes);
 app.use("/products", productsRoutes);
 app.use("/delivery-notes", deliveryNotesRoutes);
 app.use("/sessions", sessionsRoutes);
+app.use("/product-sessions", productSessionsRoutes);
 app.use("/network-info", networkRoutes);
 app.use("/activity-log", activityLogRoutes);
 

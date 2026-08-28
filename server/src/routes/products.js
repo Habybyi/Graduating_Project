@@ -1,16 +1,9 @@
 import { Router } from "express";
 import multer from "multer";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { db } from "../db/connection.js";
 import { requireAuth } from "../middleware/auth.js";
 import { logActivity } from "../services/activityLog.js";
-import { computeEmbedding } from "../services/embeddings.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const TEST_IMAGES_DIR = path.join(__dirname, "../../data/test-images");
-fs.mkdirSync(TEST_IMAGES_DIR, { recursive: true });
+import { processPackageUpload, validatePackage } from "../services/productPackages.js";
 
 const router = Router();
 
@@ -33,12 +26,6 @@ const insertProductStmt = db.prepare("INSERT INTO products (name, unit_type) VAL
 const findProductStmt = db.prepare("SELECT * FROM products WHERE id = ?");
 const countPrototypesStmt = db.prepare("SELECT COUNT(*) AS count FROM product_prototypes WHERE product_id = ?");
 const countTestImagesStmt = db.prepare("SELECT COUNT(*) AS count FROM test_images WHERE product_id = ?");
-const insertPrototypeStmt = db.prepare(
-  "INSERT INTO product_prototypes (product_id, embedding_vector, source_photo_count) VALUES (?, ?, 1)"
-);
-const insertTestImageStmt = db.prepare(
-  "INSERT INTO test_images (product_id, image_ref, embedding_vector) VALUES (?, ?, ?)"
-);
 const updateProductStmt = db.prepare("UPDATE products SET name = ?, unit_type = ? WHERE id = ?");
 const deactivateProductStmt = db.prepare("UPDATE products SET is_active = 0 WHERE id = ?");
 
@@ -137,56 +124,20 @@ router.post("/:id/packages", upload.array("photos"), async (req, res) => {
   }
 
   const { type } = req.body || {};
-  if (!["training", "test"].includes(type)) {
-    return res.status(400).json({ error: "Typ balíčka musí byť 'training' alebo 'test'." });
-  }
-  if (!req.files || req.files.length === 0) {
-    return res.status(400).json({ error: "Nahraj aspoň jednu fotku." });
+  const validationError = validatePackage(type, req.files?.length || 0);
+  if (validationError) {
+    return res.status(400).json({ error: validationError });
   }
 
-  let processed = 0;
-  for (const file of req.files) {
-    let embedding;
-    try {
-      embedding = await computeEmbedding(file.buffer, file.mimetype);
-    } catch (err) {
-      // Fail with whatever was already processed reported, rather than a
-      // bare 500 — e.g. an unsupported format (Gemini only accepts
-      // PNG/JPEG) should be a clear, actionable message, not a crash.
-      return res.status(422).json({
-        error: `Fotka '${file.originalname}' sa nedala spracovať: ${err.message}`,
-        processed,
-      });
-    }
-
-    if (type === "training") {
-      insertPrototypeStmt.run(product.id, JSON.stringify(embedding));
-      // file.buffer is never written to disk — see the multer config above.
-    } else {
-      const filename = `${product.id}-${Date.now()}-${processed}${path.extname(file.originalname) || ".jpg"}`;
-      const imageRef = path.join(TEST_IMAGES_DIR, filename);
-      fs.writeFileSync(imageRef, file.buffer);
-      insertTestImageStmt.run(product.id, imageRef, JSON.stringify(embedding));
-    }
-    processed += 1;
+  // Fail with whatever was already processed reported, rather than a bare
+  // 500 — e.g. an unsupported format (Gemini only accepts PNG/JPEG) should
+  // be a clear, actionable message, not a crash.
+  const result = await processPackageUpload({ product, type, files: req.files, actingUser: req.user });
+  if (result.error) {
+    return res.status(422).json(result);
   }
 
-  if (type === "training") {
-    logActivity({
-      actingUser: req.user,
-      action: "product.reference_photos_uploaded",
-      entityType: "Product",
-      entityId: product.id,
-      summary: `${req.user.username} nahral ${processed} tréningových fotiek pre '${product.name}'`,
-    });
-  }
-
-  res.status(201).json({
-    processed,
-    type,
-    prototypeCount: countPrototypesStmt.get(product.id).count,
-    testImageCount: countTestImagesStmt.get(product.id).count,
-  });
+  res.status(201).json(result);
 });
 
 export default router;

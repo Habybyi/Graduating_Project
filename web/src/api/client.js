@@ -86,6 +86,14 @@ export const api = {
   },
   createSession: (token, noteId) => request(`/sessions/for-note/${noteId}`, { method: "POST", token }),
   getNetworkInfo: () => request("/network-info"),
+  createProductSession: (token, productId, type) =>
+    request(`/product-sessions/for-product/${productId}`, { method: "POST", token, body: { type } }),
+  getProductScanSession: (sessionToken) => request(`/product-sessions/${sessionToken}`),
+  uploadProductSessionPhotos: (sessionToken, files) => {
+    const formData = new FormData();
+    for (const file of files) formData.append("photos", file);
+    return requestForm(`/product-sessions/${sessionToken}/photos`, { formData });
+  },
   getActivityLog: (token, filters = {}) => {
     const params = new URLSearchParams(Object.entries(filters).filter(([, v]) => v));
     const qs = params.toString();
