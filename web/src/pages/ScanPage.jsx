@@ -132,7 +132,6 @@ export const ScanPage = () => {
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            capture="environment"
             onChange={handlePhotoSelected}
             style={{ display: "none" }}
           />

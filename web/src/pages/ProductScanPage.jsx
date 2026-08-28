@@ -113,7 +113,6 @@ export const ProductScanPage = () => {
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            capture="environment"
             onChange={handleAddPhoto}
             style={{ display: "none" }}
           />
