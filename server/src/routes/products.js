@@ -4,6 +4,7 @@ import { db } from "../db/connection.js";
 import { requireAuth } from "../middleware/auth.js";
 import { logActivity } from "../services/activityLog.js";
 import { processPackageUpload, validatePackage } from "../services/productPackages.js";
+import { findBestMatch } from "../services/matching.js";
 
 const router = Router();
 
@@ -28,6 +29,17 @@ const countPrototypesStmt = db.prepare("SELECT COUNT(*) AS count FROM product_pr
 const countTestImagesStmt = db.prepare("SELECT COUNT(*) AS count FROM test_images WHERE product_id = ?");
 const updateProductStmt = db.prepare("UPDATE products SET name = ?, unit_type = ? WHERE id = ?");
 const deactivateProductStmt = db.prepare("UPDATE products SET is_active = 0 WHERE id = ?");
+const listTestImagesStmt = db.prepare(
+  "SELECT id, embedding_vector AS embeddingVector FROM test_images WHERE product_id = ?"
+);
+const findTestImageStmt = db.prepare("SELECT * FROM test_images WHERE id = ? AND product_id = ?");
+const listPrototypesStmt = db.prepare(`
+  SELECT pp.product_id AS productId, pp.embedding_vector AS embeddingVector,
+         p.name AS productName, p.unit_type AS unitType
+  FROM product_prototypes pp
+  JOIN products p ON p.id = pp.product_id
+  WHERE p.is_active = 1
+`);
 
 router.get("/", (req, res) => {
   res.json(listProductsStmt.all());
@@ -138,6 +150,67 @@ router.post("/:id/packages", upload.array("photos"), async (req, res) => {
   }
 
   res.status(201).json(result);
+});
+
+// Runs each of this product's test images through the exact same
+// recognition pipeline a real delivery photo goes through (embedding →
+// compare against every active product's prototypes), and checks whether
+// the top match was this product — see Documentation/Testing/Test_Plan.md
+// ("Top-1 accuracy"). Test image embeddings are already cached from
+// upload time, so this is just cosine-similarity math, no Gemini calls.
+router.get("/:id/test-accuracy", (req, res) => {
+  const product = findProductStmt.get(req.params.id);
+  if (!product) {
+    return res.status(404).json({ error: "Produkt neexistuje." });
+  }
+
+  const testImages = listTestImagesStmt.all(product.id);
+  if (testImages.length === 0) {
+    return res.status(400).json({ error: "Produkt nemá žiadne testovacie fotky." });
+  }
+
+  const prototypes = listPrototypesStmt.all().map((p) => ({
+    ...p,
+    embeddingVector: JSON.parse(p.embeddingVector),
+  }));
+  if (prototypes.length === 0) {
+    return res.status(400).json({ error: "V systéme ešte nie sú žiadne naučené fotky." });
+  }
+
+  const results = testImages.map((testImage) => {
+    const embedding = JSON.parse(testImage.embeddingVector);
+    const best = findBestMatch(embedding, prototypes);
+    return {
+      id: testImage.id,
+      predictedProductId: best.productId,
+      predictedProductName: best.productName,
+      confidence: best.similarity,
+      correct: best.productId === product.id,
+    };
+  });
+
+  const correctCount = results.filter((r) => r.correct).length;
+
+  res.json({
+    productId: product.id,
+    productName: product.name,
+    testImageCount: results.length,
+    correctCount,
+    accuracyPercent: Math.round((correctCount / results.length) * 100),
+    results,
+  });
+});
+
+// Serves one stored test-image file for display in the accuracy report
+// above — requires auth like the rest of this router, and is scoped to
+// the product in the URL so one product's test images can't be fetched
+// through another product's id.
+router.get("/:id/test-images/:testImageId/photo", (req, res) => {
+  const testImage = findTestImageStmt.get(req.params.testImageId, req.params.id);
+  if (!testImage) {
+    return res.status(404).json({ error: "Fotka neexistuje." });
+  }
+  res.sendFile(testImage.image_ref);
 });
 
 export default router;

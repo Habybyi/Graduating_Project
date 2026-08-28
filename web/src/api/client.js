@@ -63,6 +63,14 @@ export const api = {
     for (const file of files) formData.append("photos", file);
     return requestForm(`/products/${productId}/packages`, { token, formData });
   },
+  getTestAccuracy: (token, productId) => request(`/products/${productId}/test-accuracy`, { token }),
+  getTestImageBlob: async (token, productId, testImageId) => {
+    const response = await fetch(`${API_URL}/products/${productId}/test-images/${testImageId}/photo`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) throw new Error("Nepodarilo sa načítať fotku.");
+    return response.blob();
+  },
   listDeliveryNotes: (token) => request("/delivery-notes", { token }),
   getDeliveryNote: (token, id) => request(`/delivery-notes/${id}`, { token }),
   createDeliveryNote: (token, customerId) =>
