@@ -21,9 +21,7 @@ const NAV_ITEMS = [
   { to: "/activity-log", label: "Aktivita (log)", icon: FiActivity, enabled: true, requireRole: "manager" },
 ];
 
-// Shared sidebar shell for every logged-in screen. Most nav items are
-// disabled placeholders for now — they light up in later phases as those
-// features get built (see the roadmap in README.md).
+// Shared sidebar shell for every logged-in screen.
 export const AppShell = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
