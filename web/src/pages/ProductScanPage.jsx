@@ -31,10 +31,10 @@ export const ProductScanPage = () => {
   }, [token]);
 
   const handleAddPhoto = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
     setError("");
-    setPhotos((prev) => [...prev, { file, previewUrl: URL.createObjectURL(file) }]);
+    setPhotos((prev) => [...prev, ...files.map((file) => ({ file, previewUrl: URL.createObjectURL(file) }))]);
     e.target.value = "";
   };
 
@@ -108,11 +108,12 @@ export const ProductScanPage = () => {
         </p>
 
         <label className={styles.primaryButton} style={{ marginBottom: "1.25rem", cursor: "pointer" }}>
-          <FiCamera /> Pridať fotku
+          <FiCamera /> Pridať fotky
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            multiple
             onChange={handleAddPhoto}
             style={{ display: "none" }}
           />
