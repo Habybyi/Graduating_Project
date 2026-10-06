@@ -166,43 +166,58 @@ router.post("/:token/recognize-multi", upload.single("photo"), async (req, res) 
     return res.json({ regions: [], aggregated: [] });
   }
 
+  // Phone photos store their rotation as EXIF metadata rather than in the
+  // pixels. Gemini honors it, sharp's extract() does not — so without
+  // normalizing first, crops land on the wrong part of the photo. Resizing
+  // here also keeps the Gemini upload small (a 12MP photo is overkill).
+  let photo;
+  try {
+    photo = await sharp(req.file.buffer)
+      .rotate()
+      .resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 90 })
+      .toBuffer();
+  } catch {
+    return res.status(422).json({ error: "Fotku sa nepodarilo načítať. Skús iný formát (JPEG/PNG)." });
+  }
+
   let boxes;
   try {
-    boxes = await detectRegions(req.file.buffer, req.file.mimetype);
+    boxes = await detectRegions(photo, "image/jpeg");
   } catch (err) {
     return res.status(422).json({ error: `Lokalizácia zlyhala: ${err.message}` });
   }
 
   const regions = [];
+  let failedCount = 0;
   for (const box of boxes) {
-    let crop;
     try {
-      crop = await cropRegion(req.file.buffer, box.box_2d);
-    } catch {
-      continue; // malformed box from the model — skip rather than fail the whole photo
+      const crop = await cropRegion(photo, box.box_2d);
+      const embedding = await computeEmbedding(crop, "image/jpeg");
+      const best = findBestMatch(embedding, prototypes);
+      regions.push({
+        label: box.label,
+        productId: best.productId,
+        productName: best.productName,
+        unitType: best.unitType,
+        confidence: best.similarity,
+        confident: best.similarity >= CONFIDENCE_THRESHOLD,
+      });
+    } catch (err) {
+      failedCount += 1;
+      console.warn(`recognize-multi: skipped one region (${err.message})`);
     }
+  }
 
-    let embedding;
-    try {
-      embedding = await computeEmbedding(crop, "image/jpeg");
-    } catch {
-      continue;
-    }
-
-    const best = findBestMatch(embedding, prototypes);
-    regions.push({
-      label: box.label,
-      productId: best.productId,
-      productName: best.productName,
-      unitType: best.unitType,
-      confidence: best.similarity,
-      confident: best.similarity >= CONFIDENCE_THRESHOLD,
+  if (regions.length === 0) {
+    return res.status(422).json({
+      error: `Našlo sa ${boxes.length} kusov, ale žiadny sa nepodarilo spracovať. Skús to znova.`,
     });
   }
 
   const confidentRegions = regions.filter((r) => r.confident);
   const aggregated = aggregateRegions(confidentRegions);
-  const unmatchedCount = regions.length - confidentRegions.length;
+  const unmatchedCount = regions.length - confidentRegions.length + failedCount;
 
   res.json({ regions, aggregated, unmatchedCount });
 });

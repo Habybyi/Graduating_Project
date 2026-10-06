@@ -82,7 +82,7 @@ This means the "1 whole cake" outcome is a **rollup performed after per-slice cl
 
 ## ✅ Resolved: localization — Gemini bounding-box detection
 
-**Decided 2026-08-24**, same day as the embedding decision — turned out to be the same vendor. Gemini's vision model returns bounding boxes via a prompted JSON request (`box_2d: [ymin,xmin,ymax,xmax]` normalized 0-1000, well-documented Gemini capability). Implemented in [`server/src/services/localization.js`](../../server/src/services/localization.js), model `gemini-flash-latest`.
+**Decided 2026-08-24**, same day as the embedding decision — turned out to be the same vendor. Gemini's vision model returns bounding boxes via a JSON request with an enforced response schema (`box_2d: [ymin,xmin,ymax,xmax]` normalized 0-1000, well-documented Gemini capability). Implemented in [`server/src/services/localization.js`](../../server/src/services/localization.js), model `gemini-flash-latest`.
 
 **Why this won over SAM/classical CV:** same `GEMINI_API_KEY` already in use for embeddings — one vendor for the whole AI layer instead of three separate moving parts. No new account, no local CV tuning against lighting/background conditions we hadn't tested yet.
 
@@ -93,6 +93,13 @@ This means the "1 whole cake" outcome is a **rollup performed after per-slice cl
 **Full pipeline tested end-to-end** (localize → crop each region via `sharp` → embed each crop → classify → aggregate per the counting rules below):
 - Crate photo (3 venčeky + 1 torta, trained on crops from the same synthetic photo) → correctly aggregated to **3× Venček, 1× Čokoládová torta**, confidence 0.96–0.98.
 - Split-cake photo (trained "Maková torta" / "Malinová torta" as separate products) → correctly aggregated to **4× Maková torta, 4× Malinová torta** — the exact scenario these counting rules were designed around, verified not to collapse into one unit.
+
+**Reliability fixes found on the first real phone photo (2026-10-06):** a tray of 10 venčeky showed "nothing found" on the phone although localization *does* find all 10. Two causes, both fixed:
+- Free-text JSON from Gemini was unreliable — sometimes the key came back as `box` instead of `box_2d` (every region then got silently skipped), sometimes the JSON was corrupted. Now the request uses a `responseSchema` + `temperature: 0`, boxes are validated, and one retry is made. Measured: 16/16 runs returned 10 boxes (before: anywhere from 0 to 10).
+- Phone photos keep their rotation in EXIF metadata. Gemini honors it, `sharp.extract()` does not, so crops landed on the wrong part of the photo (similarity dropped, 5/10 pieces above the 0.7 threshold instead of 8/10). The upload is now normalized first (`.rotate()`, max 1600 px, JPEG) in `routes/sessions.js`.
+- Failed regions are no longer skipped silently: they are logged, counted into `unmatchedCount`, and if *every* region fails the endpoint returns an explicit error instead of an empty result.
+
+**Threshold note:** on that photo the correct pieces scored 0.62–0.79 against 6 training photos of one product, while unrelated images (UI screenshots, flat-color squares) scored 0.48–0.61. No realistic look-alike negatives exist yet, so `CONFIDENCE_THRESHOLD = 0.7` is left unchanged — more varied training photos (including pieces photographed in a tray) is the safer lever than lowering it.
 
 **Known limitation:** ~20 seconds for a 4-item photo (one localization call + one embedding call per detected region, run sequentially). Fine for a demo/defense; worth parallelizing the per-region embedding calls (`Promise.all`) before real-world use if a 20-crate delivery would otherwise take minutes.
 

@@ -20,10 +20,32 @@ const PROMPT =
   "neighbor (e.g. each wedge of a sliced cake is its own item). Output ONLY a JSON list, each entry: " +
   '{"box_2d": [ymin,xmin,ymax,xmax] normalized 0-1000, "label": a short visual description}. No other text.';
 
-function extractJson(text) {
-  const match = text.match(/\[[\s\S]*\]/);
-  if (!match) throw new Error("Gemini returned no detectable JSON list.");
-  return JSON.parse(match[0]);
+// Free-text JSON from Gemini proved unreliable on real photos: sometimes the
+// key came back as "box" instead of "box_2d" (every item then got silently
+// skipped), sometimes the JSON itself was corrupted. A response schema makes
+// the API enforce the shape, and isValidBox guards against anything left over.
+const RESPONSE_SCHEMA = {
+  type: "ARRAY",
+  items: {
+    type: "OBJECT",
+    properties: {
+      box_2d: { type: "ARRAY", items: { type: "INTEGER" }, minItems: 4, maxItems: 4 },
+      label: { type: "STRING" },
+    },
+    required: ["box_2d", "label"],
+  },
+};
+
+const MAX_ATTEMPTS = 2;
+
+function isValidBox(item) {
+  return (
+    Array.isArray(item?.box_2d) &&
+    item.box_2d.length === 4 &&
+    item.box_2d.every((v) => Number.isFinite(v)) &&
+    item.box_2d[2] > item.box_2d[0] &&
+    item.box_2d[3] > item.box_2d[1]
+  );
 }
 
 export async function detectRegions(imageBuffer, mimeType = "image/jpeg") {
@@ -32,26 +54,36 @@ export async function detectRegions(imageBuffer, mimeType = "image/jpeg") {
     throw new Error("GEMINI_API_KEY is not set — check server/.env (see .env.example).");
   }
 
-  const response = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            { text: PROMPT },
-            { inline_data: { mime_type: mimeType, data: imageBuffer.toString("base64") } },
-          ],
-        },
-      ],
-    }),
+  const body = JSON.stringify({
+    contents: [
+      {
+        parts: [
+          { text: PROMPT },
+          { inline_data: { mime_type: mimeType, data: imageBuffer.toString("base64") } },
+        ],
+      },
+    ],
+    generationConfig: { temperature: 0, responseMimeType: "application/json", responseSchema: RESPONSE_SCHEMA },
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data?.error?.message || "Gemini localization request failed.");
-  }
+  let lastError = new Error("Gemini localization returned no valid boxes.");
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        body,
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error?.message || "Gemini localization request failed.");
+      }
 
-  const text = data.candidates[0].content.parts[0].text;
-  return extractJson(text); // [{ box_2d: [ymin,xmin,ymax,xmax], label }]
+      const boxes = JSON.parse(data.candidates[0].content.parts[0].text).filter(isValidBox);
+      if (boxes.length > 0) return boxes; // [{ box_2d: [ymin,xmin,ymax,xmax], label }]
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError;
 }
